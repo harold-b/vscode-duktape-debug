@@ -52,7 +52,7 @@ A "thank you" also to the VSCode team for facilitating their open-source IDE and
 This code contains portions borrowed or adapted from the [vscode nodeJS debugger](https://github.com/Microsoft/vscode-node-debug) and Sami Vaarala's web-based nodeJS [reference implementation](https://github.com/svaarala/duktape/tree/master/debugger) of a Dukatape debug client.
 
 ## License
-[MIT](https://github.com/harold-b/vscode-duktape-debug/blob/master/LICENSE)
+[MIT](https://github.com/harold-b/vscode-duktape-debug/blob/master/LICENSE.txt)
 
 (c) Harold Brenes 2016
 
