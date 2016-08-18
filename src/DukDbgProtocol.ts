@@ -455,7 +455,6 @@ export class DukGetObjPropDescRangeResponse extends DukGetHeapObjInfoResponse
     }
 }
 
-
 export class DukGetClosureResponse extends DukResponse
 {
     // Taken from my modifications on duk_debugger.c:
@@ -758,8 +757,8 @@ enum State
 export class DukDbgProtocol extends EE.EventEmitter
 {
 
-    private static OUT_BUF_SIZE :number  = 1024*1;  // Resizable
-    private static IN_BUF_SIZE  :number = 1024*16;  // Fixed
+    private static OUT_BUF_SIZE :number = 1024*1;  // Resizable
+    private static IN_BUF_SIZE  :number = 1024*16; // Fixed
 
     private _state          :State = State.Offline;
     private _dukSocket      :Net.Socket;

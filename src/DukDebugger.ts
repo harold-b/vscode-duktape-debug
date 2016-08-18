@@ -554,7 +554,8 @@ class DukDebugSession extends DebugSession
             }
         });
         
-        this._dukProto.attach( "127.0.0.1", 9091 );
+        let args = <AttachRequestArguments>this._args;
+        this._dukProto.attach( args.address, args.port );
     }
     
     //-----------------------------------------------------------
