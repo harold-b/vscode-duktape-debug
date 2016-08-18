@@ -1,0 +1,9 @@
+builds/**/*
+src/**/*
+.vscode/**/*
+**/*.js.map
+**/*.vsix
+gulpfile.js
+makeExtension.js
+tsd.json
+.gitignore

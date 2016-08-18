@@ -1,0 +1,156 @@
+{
+  "name": "duk-debug",
+  "displayName": "Duktape Debugger",
+  "version": "0.2.0",
+  "description": "Debug Adapter for Duktape runtimes.",
+  "author": "Harold Brenes",
+  "publisher": "HaroldBrenes",
+  "license": "MIT (See LICENSE.txt)",
+
+  "maintainers": [
+    "Harold Brenes <brenes.games@gmail.com> (http://hbrenes.com/cv)"
+  ],
+
+  "categories": [
+    "Debuggers"
+  ],
+
+  "keywords": [
+    "duktape", "debugger", "runtime", "javascript", "typescript"
+  ],
+
+  "engines": {
+    "vscode": "^1.4.0",
+    "node": "^5.10.0"
+  },
+
+  "private": true,
+
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/harold-b/vscode-duktape-debug"
+  },
+
+  "bugs": {
+    "url": "https://github.com/harold-b/vscode-duktape-debug/issues"
+  },
+
+  "files": [
+    "out/**"
+  ],
+
+  "dependencies": {
+    "vscode-debugprotocol": "^1.11.0-pre.8",
+    "vscode-debugadapter": "^1.11.0-pre.6",
+    "process": "^0.11.2",
+    "source-map": "0.5.3",
+    "utf8": "~2.0.0",
+    "util": "~0.10.3"
+  },
+
+  "devDependencies": {
+    "bluebird": "^3.4.1",
+    "del": "~2.2.0",
+    "fs-extra": "^0.30.0",
+    "gulp": "^3.9.1",
+    "gulp-sourcemaps": "^1.6.0",
+    "gulp-typescript": "^2.13.6",
+    "run-sequence": "~1.1.5",
+    "through2": "^2.0.1",
+    "tslint": "^3.14.0",
+    "uglify-js": "^2.7.0",
+    "vscode": "^0.11.13",
+    "vscode-debugadapter-testsupport": "^1.11.0"
+  },
+
+  "scripts": {
+    "postinstall": "node node_modules/vscode/bin/install"
+  },
+
+  "main": "./out/extension",
+  "activationEvents": [],
+  "contributes": {
+    "breakpoints": [
+      {
+        "language": "javascript"
+      },
+      {
+        "language": "typescript"
+      }
+    ],
+    "debuggers": [
+      {
+        "type": "duk",
+        "label": "Duktape JS",
+        "program": "./out/DukDebugger.js",
+        "runtime": "node",
+        "enableBreakpointsFor": {
+          "languageIds": [
+            "javascript",
+            "typescript"
+          ]
+        },
+        "initialConfigurations": [
+          {
+            "name": "Attach",
+            "type": "duk",
+            "request": "attach",
+            "address": "localhost",
+            "port": 9091,
+            "localRoot": "${workspaceRoot}",
+            "sourceMaps": false,
+            "outDir": null,
+            "stopOnEntry": false
+          }
+        ],
+        "configurationAttributes": {
+          "attach": {
+            "properties": {
+              "port": {
+                "type": "number",
+                "description": "Debug port to attach to. Default is 9091.",
+                "default": "9091"
+              },
+              "address": {
+                "type": "string",
+                "description": "TCP/IP address on which the debug server is listening. Default is 'localhost'.",
+                "default": "localhost"
+              },
+              "timeout": {
+                "type": "number",
+                "description": "Retry for this number of milliseconds to connect to the debug server. Default is 10000 ms.",
+                "default": "10000"
+              },
+              "sourceMaps": {
+                "type": "boolean",
+                "description": "Use JavaScript source maps (if they exist).",
+                "default": true
+              },
+              "outDir": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "If source maps are enabled, the generated code is expected in this directory. If not specified, the generated code is expected in the same directory as its source.",
+                "default": null
+              },
+              "stopOnEntry": {
+                "type": "boolean",
+                "description": "Automatically stop program after launch.",
+                "default": true
+              },
+              "localRoot": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "The local source root that corresponds to the 'remoteRoot'.",
+                "default": null
+              }
+            }
+          }
+        }
+      }
+    ]
+  }
+}
