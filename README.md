@@ -2,7 +2,7 @@
 
 [Duktape](https://github.com/svaarala/duktape) debug client for Visual Studio Code.
 
-<img src="./img/musa-debug.gif" />
+![Screenshot](https://raw.githubusercontent.com/harold-b/vscode-duktape-debug/master/img/musa-debug.gif)
 
 ## Features
  - Local scope inspection (Duktape only provides local scope).
@@ -14,6 +14,28 @@
  
 ## Status
 In working condition, but still in the process of being refactored and finalized. Not all options are not currently honored, and only attach mode is allowed.
+
+## Usage
+Create a new launch configuration and configure the address and port to your debug server's address and port.
+
+## Example
+``` JSON
+"configurations": [
+        {
+            "name"        : "Duk Attach",
+            "type"        : "duk",
+            "request"     : "attach",
+            "stopOnEntry" : false,
+            
+            "address"     : "localhost",
+            "port"        : 9091,
+            
+            "localRoot"   : "${workspaceRoot}",
+            
+            "sourceMaps"  : true,
+            "outDir"      : "${workspaceRoot}/bin"
+        }
+```
 
 ## References
  - [https://code.visualstudio.com/docs/extensions/overview](https://code.visualstudio.com/docs/extensions/overview)
