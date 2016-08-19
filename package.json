@@ -109,7 +109,7 @@
               "port": {
                 "type": "number",
                 "description": "Debug port to attach to. Default is 9091.",
-                "default": "9091"
+                "default": 9091
               },
               "address": {
                 "type": "string",
@@ -119,7 +119,7 @@
               "timeout": {
                 "type": "number",
                 "description": "Retry for this number of milliseconds to connect to the debug server. Default is 10000 ms.",
-                "default": "10000"
+                "default": 10000
               },
               "sourceMaps": {
                 "type": "boolean",
