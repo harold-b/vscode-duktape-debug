@@ -13,7 +13,7 @@
  - Artificial property inspection.
  
 ## Status
-In working condition, but still in the process of being refactored and finalized. Not all options are not currently honored, and only attach mode is allowed.
+It works. I'd like to refactor it and polish it more as I find the time.
 
 ## Usage
 Create a new launch configuration and configure the address and port to your debug server's address and port.

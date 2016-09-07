@@ -1,11 +1,13 @@
 {
   "name": "duk-debug",
   "displayName": "Duktape Debugger",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Debug Adapter for Duktape runtimes.",
   "author": "Harold Brenes",
   "publisher": "HaroldBrenes",
   "license": "MIT (See LICENSE.txt)",
+
+  "icon": "img/icon.png",
 
   "maintainers": [
     "Harold Brenes <brenes.games@gmail.com> (http://hbrenes.com/cv)"
