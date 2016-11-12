@@ -1,7 +1,7 @@
 {
   "name": "duk-debug",
   "displayName": "Duktape Debugger",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "description": "Debug Adapter for Duktape runtimes.",
   "author": "Harold Brenes",
   "publisher": "HaroldBrenes",
@@ -38,7 +38,8 @@
   },
 
   "files": [
-    "out/**"
+    "out/**",
+    "CHANGELOG.md"
   ],
 
   "dependencies": {
