@@ -37,6 +37,9 @@ Create a new launch configuration and configure the address and port to your deb
         }
 ```
 
+## Debug Options
+Use `debugLog` to enable network traffic logging.
+
 ## References
  - [https://code.visualstudio.com/docs/extensions/overview](https://code.visualstudio.com/docs/extensions/overview)
  - [https://code.visualstudio.com/docs/extensions/example-debuggers](https://code.visualstudio.com/docs/extensions/example-debuggers)
