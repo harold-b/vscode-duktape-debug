@@ -1632,7 +1632,10 @@ export class DukDbgProtocol extends EE.EventEmitter
 
                 case Duk.NotifyType.DETACHING :
                 {
-                    let reason = `Target detached: ( ${msg[2].value} )  ${msg[3].value}`;
+                    let code = <number>msg[2].value;
+                    let err  = <string>(msg.length > 4 ? msg[3].value : "");
+                    
+                    let reason = `Target detached: ( ${code} )  ${err}`;
                     this.disconnect( reason );
                 }
                 break;

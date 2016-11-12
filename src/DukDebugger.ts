@@ -1234,14 +1234,28 @@ class DukDebugSession extends DebugSession
         {
             let frame = this._dbgState.stackFrames.get( args.frameId );
             if( !frame )
+            {
                 this.requestFailedResponse( response, "Failed to find stack frame: " + args.frameId );
-                
+                return;
+            }
+            
+            if( !args.expression || args.expression.length < 1 )
+            {
+                this.requestFailedResponse( response, "Invalid expression" );
+                return;
+            }
+
+            this.dbgLog( `Expression: ${args.expression}` );
+
             this._dukProto.requestEval( args.expression, frame.depth )
                 .then( resp => {
                     
                     let r = <DukEvalResponse>resp;
                     if( !r.success )
+                    {
                         this.requestFailedResponse( response, "Eval failed: " + r.result );    
+                        return;
+                    }
                     else
                     {
                         response.body = {
