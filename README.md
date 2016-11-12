@@ -2,7 +2,7 @@
 
 [Duktape](https://github.com/svaarala/duktape) debug client for Visual Studio Code.
 
-![Screenshot](https://raw.githubusercontent.com/harold-b/vscode-duktape-debug/master/img/musa-debug.gif)
+![Screenshot](https://raw.githubusercontent.com/harold-b/vscode-duktape-debug/master/img/screenshot.gif)
 
 ## Features
  - Local scope inspection (Duktape only provides local scope).

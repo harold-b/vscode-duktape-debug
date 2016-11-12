@@ -434,7 +434,10 @@ class DukDebugSession extends DebugSession
         this.setDebuggerLinesStartAt1   ( true );
         this.setDebuggerColumnsStartAt1 ( true );
         
-        this._dbgState = new DbgClientState();
+        this._dbgState    = new DbgClientState();
+        this._sources     = {};
+        this._sourceToGen = {};
+        this._breakpoints._breakpoints = [];
         
         this.initDukDbgProtocol();
     }
@@ -451,7 +454,7 @@ class DukDebugSession extends DebugSession
                 this.dbgLog( "Status Notification: PAUSE" );
 
             //this.dbgLog( "Status Notification: " + 
-            //    (status.state == DukStatusState.Paused ? "pause" : "running") );
+            //    (status.state == DukStatusState.Paused ? "pause" : "running" ) );
             
             if( !this._initialStatus )
             {
@@ -460,9 +463,11 @@ class DukDebugSession extends DebugSession
                     this._initialStatus         = status;
                     this._awaitingInitialStatus = false;
                 }
-                
-                // Don't act on any stop commands until it responds to the status we asked for
-                return;
+                else
+                {
+                    // Don't act on any stop commands until it responds to the status we asked for
+                    return;
+                }
             }
             
             // Pause/Unpause
@@ -563,10 +568,6 @@ class DukDebugSession extends DebugSession
     private finalizeInit( response:DebugProtocol.Response ) : void
     {
         this.dbgLog( "Finalized Initialization." );
-        
-        this._sources     = {};
-        this._sourceToGen = {};
-        this._breakpoints._breakpoints = [];
 
         if( this._args.sourceMaps )
             this._sourceMaps = new SourceMaps( this._outDir );
