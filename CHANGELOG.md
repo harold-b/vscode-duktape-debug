@@ -1,3 +1,6 @@
+## 0.2.8
+    - Fixed sending empty eval expressions.
+
 ## 0.2.7
 
     - 'stopOnEntry' works properly now. 
