@@ -63,6 +63,9 @@ export interface CommonArguments {
     /** Where to look for the generated code. Only used if sourceMaps is true. */
     outDir?: string;
 
+    // Debug options
+    debugLog?: boolean;
+
     // For musashi-specific builds
     isMusashi?: boolean;
 }
@@ -99,12 +102,6 @@ export interface AttachRequestArguments extends CommonArguments {
     remoteRoot?: string;
     /** VS Code's root directory. */
     localRoot?: string;
-}
-
-// Debug ( To debug the debgger ) consts
-const enum DebugConsts
-{
-    TRACE = 0
 }
 
 // Utitity
@@ -424,6 +421,8 @@ class DukDebugSession extends DebugSession
     private _expectingContinue :boolean = false;
 
     private _scopeMask:DukScopeMask = DukScopeMask.AllButGlobals;
+
+    private _dbgLog:boolean = false;
   
     //-----------------------------------------------------------
     public constructor()
@@ -656,7 +655,7 @@ class DukDebugSession extends DebugSession
         this._sourceRoot    = this.normPath( args.localRoot  );
         this._remoteRoot    = this.normPath( args.remoteRoot );
         this._outDir        = this.normPath( args.outDir     );
-
+        this._dbgLog        = args.debugLog || false;
 
         this.beginInit( response );
     }
@@ -804,7 +803,9 @@ class DukDebugSession extends DebugSession
                 generatedName = pos.fileName;
                 line = pos.line;
             }
-            
+            else
+                generatedName = args.source.name;
+
             if( !generatedName )
             {
                 // Cannot set breakpoint, go to the next one
@@ -2031,7 +2032,8 @@ class DukDebugSession extends DebugSession
     //-----------------------------------------------------------
     private dbgLog( msg:string ) : void
     {
-        if( DebugConsts.TRACE )
+        //if( DebugConsts.TRACE )
+        if( this._dbgLog )
         {
             this.sendEvent( new OutputEvent( msg + "\n" ) );
             console.log( msg );

@@ -1638,7 +1638,8 @@ export class DukDbgProtocol extends EE.EventEmitter
                 break;
 
                 case Duk.NotifyType.APP_MSG:
-                    throw new Error( "Unimplemented" );
+                    // Ignored for now
+                    //throw new Error( "Unimplemented" );
                 break;
             }
         }
