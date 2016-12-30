@@ -1,3 +1,6 @@
+## 0.2.10
+    - Updated documentation.
+
 ## 0.2.9
     - Fixed 64-bit pointers being written incorrectly. This would cause a crash in the target host.
 
