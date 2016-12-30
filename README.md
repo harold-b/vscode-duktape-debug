@@ -14,12 +14,10 @@ A [Duktape](https://github.com/svaarala/duktape) debug client for Visual Studio 
  - Console input evals.
  - Artificial property inspection.
  
-</br>
 
 ## Status
 It works. I'd like to refactor it and polish it more as I find the time.
 
-</br>
 
 ## Usage
 Create a new launch.json configuration file and configure the address and port to your debug server's listening address and port.
@@ -49,8 +47,6 @@ If you'd like to see the network traffic exchanged between the client and server
 ``` JSON
 "debugLog" : true
 ```
-
-</br>
 
 ## Debug Host (Server) Instructions
 For the debugger client to work with your Duktape host application, you must enable the following preprocessor macros:
@@ -86,7 +82,6 @@ You must also have a transport layer written in your Duktape host application to
 
 For an example of an application with debugger support, please see [Duktape's command line app](https://github.com/svaarala/duktape/tree/master/examples/cmdline).
 
-</br>
 
 ## References
  - [https://code.visualstudio.com/docs/extensions/overview](https://code.visualstudio.com/docs/extensions/overview)
@@ -94,7 +89,6 @@ For an example of an application with debugger support, please see [Duktape's co
 
 The adapter uses the debugger protocol based on Duktape version 1.5.0 of [debugger.rst](https://github.com/svaarala/duktape/blob/v1.5.0/doc/debugger.rst).
 
-</br>
 
 ## Acknoledgements
 Special thanks to Sami Vaarala for developing Duktape, and for freely sharing it with the community.
@@ -102,7 +96,6 @@ A "thank you" also to the VSCode team for facilitating their open-source IDE and
 
 This code contains portions borrowed or adapted from the [vscode nodeJS debugger](https://github.com/Microsoft/vscode-node-debug) and Sami Vaarala's web-based nodeJS [reference implementation](https://github.com/svaarala/duktape/tree/master/debugger) of a Dukatape debug client.
 
-</br>
 
 ## License
 [MIT](https://github.com/harold-b/vscode-duktape-debug/blob/master/LICENSE.txt)
