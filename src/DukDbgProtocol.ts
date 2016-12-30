@@ -635,10 +635,16 @@ class DukMsgBuilder
         this.buf.writeUInt8( Duk.DvalIB.POINTER, this.length++ );
         this.buf.writeUInt8( ptr.size, this.length++ );
 
-        this.buf.writeUInt32BE( ptr.lopart, this.length );
+        let offset = 0;
 
         if( ptr.size == 8 )
-            this.buf.writeUInt32BE( ptr.hipart, this.length+4 );
+        {
+            this.buf.writeUInt32BE( ptr.hipart, this.length );
+            offset = 4;
+        }
+
+        this.buf.writeUInt32BE( ptr.lopart, this.length+offset );
+
 
         this.length += ptr.size;
     }
