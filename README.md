@@ -78,7 +78,7 @@ For the debugger client to work with your Duktape host application, you must ena
 ```
 For more information about the aforementioned options, see [this entry](http://wiki.duktape.org/ConfigOptions.html) on the Duktape wiki.
 
-You must also have a transport layer written in your Duktape host application to enable debugging via [duk_debugger_attach()](http://duktape.org/api.html#duk_debugger_attach) or [.duk_debugger_attach_custom()](http://duktape.org/api.html#duk_debugger_attach_custom) . You may use Duktape's [reference implementation](https://github.com/svaarala/duktape/tree/master/examples/debug-trans-socket).
+You must also have a transport layer written in your Duktape host application to enable debugging via [duk_debugger_attach()](http://duktape.org/api.html#duk_debugger_attach) or [duk_debugger_attach_custom()](http://duktape.org/api.html#duk_debugger_attach_custom). You may use Duktape's [reference implementation](https://github.com/svaarala/duktape/tree/master/examples/debug-trans-socket).
 
 For an example of an application with debugger support, please see [Duktape's command line app](https://github.com/svaarala/duktape/tree/master/examples/cmdline).
 
