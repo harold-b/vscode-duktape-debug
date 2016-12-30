@@ -2,7 +2,7 @@
 
 A [Duktape](https://github.com/svaarala/duktape) debug client for Visual Studio Code.
 
-**Developed for version `1.5.*` of the Duktape runtime. See [References](#References) below for more information.**
+**Developed for version `1.5.*` of the Duktape runtime. See [References](#references) below for more information.**
 
 ![Screenshot](https://raw.githubusercontent.com/harold-b/vscode-duktape-debug/master/img/screenshot.gif)
 
