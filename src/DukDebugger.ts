@@ -881,12 +881,13 @@ class DukDebugSession extends DebugSession
             this._dukProto.requestResume().then( ( val ) => {
                 
                 // A status notification should follow shortly
-                this.sendResponse( response );
+                //this.sendResponse( response );
                 
             }).catch( (err) => {
                 
                 this.requestFailedResponse( response );
             });
+            this.sendResponse( response );
         }
         else
         {
