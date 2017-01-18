@@ -2048,9 +2048,16 @@ class DukDebugSession extends DebugSession
     //-----------------------------------------------------------
     private dbgLog( msg:string ) : void
     {
-        //if( DebugConsts.TRACE )
-        if( this._dbgLog )
+        if( this._dbgLog && msg && msg.length > 0 )
         {
+            // Workaround for #11: https://github.com/harold-b/vscode-duktape-debug/issues/11
+            var buf = new Buffer( msg );
+                for( var i=0, len=buf.length; i < len; i++ )
+                    if( buf[i] > 0x7F )
+                        buf[i] = 0x3F;
+
+            msg = buf.toString( 'utf8' );
+
             this.sendEvent( new OutputEvent( msg + "\n" ) );
             console.log( msg );
         }

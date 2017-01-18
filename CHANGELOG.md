@@ -1,3 +1,6 @@
+## 0.2.13
+    - Hotfix for github issues #10 & #11
+
 ## 0.2.11
     - Updated documentation.
 

@@ -1,7 +1,7 @@
 {
   "name": "duk-debug",
   "displayName": "Duktape Debugger",
-  "version": "0.2.11",
+  "version": "0.2.13",
   "description": "Debug Adapter for Duktape runtimes.",
   "author": "Harold Brenes",
   "publisher": "HaroldBrenes",
