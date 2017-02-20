@@ -805,7 +805,7 @@ class DukDebugSession extends DebugSession
                 line = pos.line;
             }
             else
-                generatedName = args.source.name;
+                generatedName = this.getSourceNameByPath(args.source.path) || args.source.name;
 
             if( !generatedName )
             {
@@ -1963,8 +1963,11 @@ class DukDebugSession extends DebugSession
         path        = Path.normalize( path );
         let name    = Path.basename( path );
 
+        // Grab the relative path under the root if this is located there, or just keep the full path if it's not
+        let pathUnderRoot = Path.dirname(this.getSourceNameByPath(path) || path);
+
         if( !this._sourceMaps )
-            return this.mapSourceFile( name );
+            return this.mapSourceFile( Path.join(pathUnderRoot, name) );
         
         let src2gen = this._sourceToGen;
         
@@ -1974,9 +1977,16 @@ class DukDebugSession extends DebugSession
         
         let src:SourceFile = null;
 
+        let outDirToScan = this._outDir;
+        
+        // Next construct the folder to scan by combining the path coming in with the out directory.  The
+        // path coming in may point to a subfolder under "RootPath"
+        outDirToScan = Path.join(outDirToScan, pathUnderRoot);
+        this.dbgLog("TSH - Scanning directory: " + outDirToScan);
+
         // If we still haven't found anything,
         // we try to map all the source files in the outDir
-        let files:string[] = FS.readdirSync( this._outDir );
+        let files:string[] = FS.readdirSync( outDirToScan );
 
         for( let i = 0; i < files.length; i++ )
         {
@@ -1986,11 +1996,11 @@ class DukDebugSession extends DebugSession
             if( f.toLowerCase().lastIndexOf(".js") != f.length - ".js".length )
                 continue;
 
-            var stat = FS.lstatSync( Path.join( this._outDir, f ) );
+            var stat = FS.lstatSync( Path.join( outDirToScan, f ) );
             if( stat.isDirectory() )        // Ignore dirs, shallow search
                 continue;
             
-            src = this.mapSourceFile( f );
+            src = this.mapSourceFile(Path.join(pathUnderRoot, f));
             if( src )
                 return src;
         }
