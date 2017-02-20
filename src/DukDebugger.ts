@@ -1964,7 +1964,7 @@ class DukDebugSession extends DebugSession
         let name    = Path.basename( path );
 
         // Grab the relative path under the root if this is located there, or just keep the full path if it's not
-        let pathUnderRoot = Path.dirname(this.getSourceNameByPath(path) || path);
+        let pathUnderRoot = Path.dirname(this.getSourceNameByPath(path) || "");
 
         if( !this._sourceMaps )
             return this.mapSourceFile( Path.join(pathUnderRoot, name) );
@@ -1977,15 +1977,14 @@ class DukDebugSession extends DebugSession
         
         let src:SourceFile = null;
 
-        let outDirToScan = this._outDir;
-        
-        // Next construct the folder to scan by combining the path coming in with the out directory.  The
-        // path coming in may point to a subfolder under "RootPath"
-        outDirToScan = Path.join(outDirToScan, pathUnderRoot);
-        this.dbgLog("TSH - Scanning directory: " + outDirToScan);
-
         // If we still haven't found anything,
         // we try to map all the source files in the outDir
+        
+        // Let's construct the folder to scan by combining the path coming in with the out directory.  The
+        // path coming in may point to a subfolder under "rootPath" so this will ensure that we are looking in
+        // the right directory
+        let outDirToScan = Path.join(this._outDir, pathUnderRoot);
+        
         let files:string[] = FS.readdirSync( outDirToScan );
 
         for( let i = 0; i < files.length; i++ )
