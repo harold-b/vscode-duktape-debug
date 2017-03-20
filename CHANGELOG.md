@@ -1,5 +1,10 @@
+## 0.3.0
+    - Support for duktape v2.*.* in addtion to v.1.5+.
+    - Support for files in subfolders (thanks @shaddockh). See: https://github.com/harold-b/vscode-duktape-debug/pull/21
+    - Update to current extension vscode API. See: https://github.com/harold-b/vscode-duktape-debug/issues/19
+
 ## 0.2.13
-    - Hotfix for github issues #10 & #11
+    - Hotfix for github issues #10 & #11.
 
 ## 0.2.11
     - Updated documentation.

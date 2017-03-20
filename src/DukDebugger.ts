@@ -17,6 +17,10 @@ import * as assert from 'assert';
 import { ISourceMaps, SourceMaps, SourceMap, Bias } from './sourceMaps';
 import * as PathUtils from './pathUtilities';
 
+import * as Promise from "bluebird"     ;
+
+import { DukConnection, DukVersion } from "./DukConnection";
+
 import {
     DukDbgProtocol,
     DukEvent,
@@ -43,8 +47,10 @@ import {
    
 } from "./DukDbgProtocol";
 
-import * as Duk from "./DukConsts";
+//import { DukDbgProtocol as DukDebugProto1_5_0 } from "./v1.5.0/DukDbgProtocol";
+//import { DukDbgProtocol as DukDebugProto2_0_0 } from "./v2.0.0/DukDbgProtocol";
 
+import * as Duk from "./DukBase";
 
 
  // Arguments shared between Launch and Attach requests.
@@ -70,6 +76,7 @@ export interface CommonArguments {
     isMusashi?: boolean;
 }
 
+type HObjectClassID = number;
 
 // This interface should always match the schema found in the node-debug extension manifest.
 export interface LaunchRequestArguments extends CommonArguments {
@@ -302,7 +309,7 @@ class PropertySet
     public variables :Variable[];
 
     // Object class type ( for Object set types )
-    public classType :Duk.HObjectClassID = Duk.HObjectClassID.UNUSED;
+    public classType :HObjectClassID = 0;   // TODO: remove this, deprecated.
     
     public constructor( type:PropertySetType )
     {
@@ -384,12 +391,8 @@ class ErrorCode
 class DukDebugSession extends DebugSession
 {
     private static THREAD_ID = 1;
-    
-       
-    private _launchArgs     :LaunchRequestArguments;
-    private _attachArgs     :AttachRequestArguments;
-    
-    private _args           :CommonArguments;
+        
+    private _args           :AttachRequestArguments|LaunchRequestArguments;
 
     private _nextSourceID   :number         = 1;
     private _sources        :{};                // Key/Value pairs of fileName/SourceFile
@@ -406,7 +409,6 @@ class DukDebugSession extends DebugSession
     private _launchType     :LaunchType;
     private _targetProgram  :string;
     private _sourceRoot     :string;
-    private _remoteRoot     :string;
     private _outDir         :string;
     private _stopOnEntry    :boolean;
     private _dukProto       :DukDbgProtocol;
@@ -417,8 +419,9 @@ class DukDebugSession extends DebugSession
     private _awaitingInitialStatus:boolean;
     private _initialStatus  :DukStatusNotification;
     
-    private _expectingBreak    :string = "debugger";
+    private _expectingBreak    :string  = "debugger";
     private _expectingContinue :boolean = false;
+    private _isDisconnecting   :boolean = false;    // True if the client initiated a disconnect.
 
     private _scopeMask:DukScopeMask = DukScopeMask.AllButGlobals;
 
@@ -428,7 +431,6 @@ class DukDebugSession extends DebugSession
     public constructor()
     {
         super();
-        this.dbgLog( "DukDebugSession()" );
 
         // this debugger uses zero-based lines and columns
         this.setDebuggerLinesStartAt1   ( true );
@@ -438,14 +440,12 @@ class DukDebugSession extends DebugSession
         this._sources     = {};
         this._sourceToGen = {};
         this._breakpoints._breakpoints = [];
-        
-        this.initDukDbgProtocol();
     }
     
     //-----------------------------------------------------------
-    private initDukDbgProtocol() : void
+    private initDukDbgProtocol( conn:DukConnection, buf:Buffer) : void
     {
-        this._dukProto = new DukDbgProtocol( ( msg ) => this.dbgLog(msg) ); 
+        this._dukProto = new DukDbgProtocol( conn, buf, ( msg ) => this.dbgLog(msg) ); 
         
         // Status
         this._dukProto.on( DukEvent[DukEvent.nfy_status], ( status:DukStatusNotification ) => {
@@ -511,7 +511,7 @@ class DukDebugSession extends DebugSession
          
         // Disconnect
         this._dukProto.once( DukEvent[DukEvent.disconnected], ( reason:string) => {
-            this.logToClient( `Disconnected: ${reason}\n` ); 
+            this.logToClient( `Disconnected: ${ this._isDisconnecting ? "Client disconnected" : reason}\n` );
             this.sendEvent( new TerminatedEvent() );
         });
         
@@ -544,22 +544,42 @@ class DukDebugSession extends DebugSession
         this._awaitingInitialStatus = false;
         
         // Attached to Debug Server
-        this._dukProto.once( DukEvent[DukEvent.attached], ( success:boolean ) => {
-            
-            if( success )
-            {
-                this.logToClient( "Attached to duktape debugger.\n" );
-                this.finalizeInit( response );
-            }
-            else
-            {
-                this.logToClient( "Attach failed.\n" );
-                this.sendErrorResponse( response, 0, "Attach failed" ); 
-            }
-        });
-        
+        let conn:DukConnection;
         let args = <AttachRequestArguments>this._args;
-        this._dukProto.attach( args.address, args.port );
+
+        try {
+            const tmOut = args.timeout === undefined ? 10000 : 0;
+            conn = DukConnection.connect( args.address, args.port, tmOut );
+
+            conn.once( "connected", ( buf:Buffer, version:DukVersion ) => {
+
+                this.logToClient( "Attached to duktape debugger.\n" );
+                conn.removeAllListeners();
+
+                this.logToClient( `Protocol ID: ${version.id}` );
+
+                var proto:any;
+
+                if( version.major == 2 || ( version.major == 1 && version.minor >= 5 ) )
+                {
+                    this.initDukDbgProtocol( conn, buf );
+                    this.finalizeInit( response );
+                }
+                else
+                {
+                    conn.closeSocket();
+                    this.sendErrorResponse( response, 0, 
+                        `Unsupported duktape version: ${version.dukVersion}` );
+                }
+            });
+
+            conn.once( "error", ( err ) => {
+                this.sendErrorResponse( response, 0, "Attach failed with error: " + err );
+            });
+        }
+        catch(  err ) {
+            this.sendErrorResponse( response, 0, "Failed to perform attach with error: " + err );
+        }
     }
     
     //-----------------------------------------------------------
@@ -615,21 +635,20 @@ class DukDebugSession extends DebugSession
     //-----------------------------------------------------------
     protected launchRequest( response: DebugProtocol.LaunchResponse, args: LaunchRequestArguments ) : void
     {
+        /// TODO: Support launch
         this.dbgLog( "[FE] launchRequest" );
-        throw new Error( "Launching is not currently supported. Use Attach." );
+        this.sendErrorResponse( response, 0, "Launching is not currently supported. Use Attach.");
         return;
         
         this.dbgLog( "Program : " + args.program );
         this.dbgLog( "CWD     : " + args.cwd );
         this.dbgLog( "Stop On Entry  : " + args.stopOnEntry );
         
-        
         this._launchType    = LaunchType.Launch;
         this._targetProgram = args.program;
         this._sourceRoot    = this.normPath( args.cwd );
         this._stopOnEntry   = args.stopOnEntry;
         
-        /// TODO: Support launch
     }
     
     //-----------------------------------------------------------
@@ -654,7 +673,6 @@ class DukDebugSession extends DebugSession
         this._args          = args;
         this._launchType    = LaunchType.Attach;
         this._sourceRoot    = this.normPath( args.localRoot  );
-        this._remoteRoot    = this.normPath( args.remoteRoot );
         this._outDir        = this.normPath( args.outDir     );
         this._dbgLog        = args.debugLog || false;
 
@@ -666,44 +684,32 @@ class DukDebugSession extends DebugSession
     {
         this.dbgLog( "[FE] disconnectRequest" );
         
-        const TIMEOUT_MS:number  = 2000;
-        var disconnected:boolean = false;
+        this._isDisconnecting = true;
+        
+        if( !this._dukProto.isConnected )
+        {
+            // Already disconencted
+            this.sendResponse( response );
+            return;
+        }
+
+        const TIMEOUT_MS:number = 2000;
         
         var doDisconnect = () => {
-            
-            if( disconnected )
-                return;
-                
-            disconnected = true;
-            
-            this.dbgLog( "Disconnecing Socket." );
-            this._dukProto.disconnect();
+
+            clearTimeout( timeoutID );
+            this._dukProto.disconnect( "Client disconnected." );
+
             this.sendResponse( response );
         };
         
         var timeoutID:NodeJS.Timer = setTimeout( () =>{
             
-            clearTimeout( timeoutID );
-            if( disconnected )
-                return;
-                
             this.dbgLog( "Detach request took too long. Forcefully disconnecting." );
             doDisconnect();
             
         }, TIMEOUT_MS );
-        
-        
-        // Detach request after clearing all the breakpoints
-        var doDetach = () => {
-            
-            if( disconnected )
-                return;
-                
-            this._dukProto.requestDetach()
-            .catch()
-            .then( () => doDisconnect() );
-        };
-        
+               
         // Clear all breakpoints & disconnect
         this._breakpoints._breakpoints = [];
 
@@ -712,12 +718,13 @@ class DukDebugSession extends DebugSession
         .catch()
         .then( () => {
             
-            if( disconnected )
-                return;
-                
-            this._dukProto.requestDetach()
+            // At this point the remote socket may have been closed.
+            var isConnected = this._dukProto.isConnected;
+
+            ( ( isConnected && this._dukProto.requestDetach()) || Promise.resolve() )
             .catch()
-            .then( () => doDisconnect() );
+            .then( () => doDisconnect() );  // This will be redundant if the detach 
+                                            // response was received succesfully.
         })
         .catch();
     }
@@ -1501,7 +1508,7 @@ class DukDebugSession extends DebugSession
                 numBreakpoints = r.breakpoints.length;
                 
                 if( numBreakpoints < 1 )
-                    return Promise.resolve();
+                    return Promise.resolve([]);
                 
                 var promises = new Array<Promise<any>>();
                 promises.length = numBreakpoints;
@@ -1654,9 +1661,10 @@ class DukDebugSession extends DebugSession
         let scope     :DukScope = propSet.scope;
         let stackDepth:number   = scope.stackFrame.depth;
 
-        let toStrPromises:Promise<any>[] = [];  // If we find regular object values, get their toString value
-        let objVars      :Variable[]     = [];  // Save object vars separate to set the value
-                                                //  when the toString promises return
+        let objClassPromises:Promise<any>[] = [];   // For resolving the object's "class_name" artificial prop.
+        let toStrPromises   :Promise<any>[] = [];   // If we find regular object values, get their toString value
+        let objVars         :Variable[]     = [];   // Save object vars separately to set the value
+                                                    //  when the toString promises return
         if( !propSet.variables )
             propSet.variables = [];
         
@@ -1697,9 +1705,11 @@ class DukDebugSession extends DebugSession
                     // This object's properties have not been resolved yet,
                     // resolve it for the first time
                     objPropSet           = new PropertySet( PropertySetType.Object );
-                    objPropSet.scope     = scope;
-                    objPropSet.heapPtr   = (<Duk.TValObject>value).ptr;
-                    objPropSet.classType = (<Duk.TValObject>value).classID;
+                    objPropSet.scope       = scope;
+                    objPropSet.heapPtr     = (<Duk.TValObject>value).ptr;
+                    objPropSet.classType   = (<Duk.TValObject>value).classID;
+                    objPropSet.displayName = "Object";
+                    variable.value = objPropSet.displayName;
                     
                     objPropSet.handle           = this._dbgState.varHandles.create( objPropSet );
                     variable.variablesReference = objPropSet.handle;
@@ -1707,20 +1717,33 @@ class DukDebugSession extends DebugSession
                     // Register with the pointer map
                     this._dbgState.ptrHandles[ptrStr] = objPropSet;
 
-                    // If it's a standard built-in object, then use it's name instead
-                    // Otherwise we will register it to get it's toString() result
-                    if( objPropSet.classType != Duk.HObjectClassID.OBJECT )
-                    {
-                        objPropSet.displayName = Duk.HObjectClassNames[(<Duk.TValObject>value).classID];
-                        variable.value         = objPropSet.displayName;
-                        continue;
-                    }
+                    // Try to obtain standard built-in object's dispaly name 
+                    // by querying the 'class_name' artificial property.
+                    var objPromise = this._dukProto.requestInspectHeapObj( objPropSet.heapPtr )
+                    .then( (r:DukGetHeapObjInfoResponse) => {
+
+                        var clsName:Duk.Property = ArrayX.firstOrNull( r.properties, v => v.key === "class_name" );
+
+                        if( !clsName || clsName.value === <any>"Object" )
+                        {
+                            // For plain 'Object' types, we want to try to 
+                            // obtain its constructor's name.
+                            toStrPromises.push( this.getConstructorNameByObject( objPropSet.heapPtr ) );
+                            objVars.push( variable );
+                        }
+                        else
+                        {
+                            objPropSet.displayName = <string>clsName.value;
+                            variable.value         = objPropSet.displayName;
+                        }
+                    });
+
+                    objClassPromises.push( objPromise );
                 }
                 
                 // Eval Object.toString()
                 //let expr = `${key}.toString()`;
                 //toStrPromises.push( this._dukProto.requestEval( expr, stackDepth ) );
-
                 // NOTE: We are not doing toString anymore, for the time
                 // being we just get the constructor name. This is because
                 // there's no way to call 'toString' by object/ptr value. Only
@@ -1728,8 +1751,6 @@ class DukDebugSession extends DebugSession
                 // first implementation, but it would be pretty slow for long property
                 // chains (deeply nested objects). Maybe we'll do so later, but for now
                 // the constructor name is enough.
-                toStrPromises.push( this.getConstructorNameByObject(objPropSet.heapPtr) );
-                objVars.push( variable );
             }
             else
             {
@@ -1737,10 +1758,11 @@ class DukDebugSession extends DebugSession
                 variable.value = typeof value === "string" ? `"${value}"` : String( value );
             }
         }
-        
-        // Set the object var's display value to the 'toString' result
-        if( toStrPromises.length > 0 )
-        {
+
+        return Promise.all( objClassPromises )
+        .then( () => {
+
+            // Set the object var's display value to the 'toString' result
             return Promise.all( toStrPromises )
             .then( (toStrResults:string[]) => {
                 
@@ -1797,9 +1819,11 @@ class DukDebugSession extends DebugSession
                 
                 return Promise.resolve( propSet ); 
             });
-        }
-        else
+        })
+        .catch()
+        .then( () => {
             return Promise.resolve( propSet );
+         });
     }
     
     //-----------------------------------------------------------
@@ -1831,7 +1855,7 @@ class DukDebugSession extends DebugSession
     //-----------------------------------------------------------
     private getConstructorNameByObject( ptr:Duk.TValPointer ): Promise<string>
     {
-        // First get the artificials, from the object,
+        // First get the artificials from the object,
         // then find the prototype object from the artificials list,
         // then get it's artificials to find the entry part's max value,
         // then get the constructor and then find its name property

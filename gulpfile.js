@@ -6,7 +6,8 @@ var ts              = require( "gulp-typescript" );
 var sourcemaps      = require( "gulp-sourcemaps" );
 var runSequence     = require( "run-sequence"    );
 var through         = require( "through2"        );
-var uglifyJS        = require( "uglify-js"       );
+var typescript      = require( "typescript"      );
+//var uglifyJS        = require( "uglify-js"       );
 
 // Config
 var SRC_ROOT      = "./src";
@@ -16,12 +17,13 @@ var EXT_OUT_DIR   = "./builds";
 
 // Create TS project
 var tsCfg = ts.createProject( TS_CFG_PATH, {
-    noEmitOnError : true,
-    sortOutput    : true
+    //noEmitOnError : true,
+    typescript    : typescript
 });
 
 
 /// Methods
+/*
 function uglifyOutput( mangle )
 {
     return through.obj( function(file, encoding, cb) {
@@ -52,10 +54,12 @@ function uglifyOutput( mangle )
         cb( null, file );
     });
 }
+*/
 
 function preparePipeline( opts )
 {
     opts = opts || {
+        srcMaps: true,
         minify: false,
         mangle: false
     };
@@ -63,20 +67,24 @@ function preparePipeline( opts )
     // Compile Typescript
     var tsResult = tsCfg.src()
         .pipe( sourcemaps.init() )
-        .pipe( ts( tsCfg ) );
+        .pipe( tsCfg() );
     
     var r = tsResult.js;
 
     // Minify & mangle
     if( opts.minify )
-        r.pipe( uglifyOutput() );
+        r = r.pipe( uglifyOutput() );
 
     // Write sourceMaps and output
-    r.pipe( sourcemaps.write( ".", {
-        includeContent: false, 
-        sourceRoot: "../src"
-    } ))
-    .pipe( gulp.dest( OUT_DIR ) );
+    if( opts.srcMaps )
+    {
+        r = r.pipe( sourcemaps.write( ".", {
+            includeContent: false, 
+            sourceRoot: ""
+        } ))
+
+    }
+    r.pipe( gulp.dest( OUT_DIR ) );
 
     return r;
 }
@@ -89,17 +97,13 @@ function compile( opts )
 function packageRelease()
 {
     console.log( "Packaging extension..." );
-
-    var copyDirs = [
-        "./out"
-    ];
 }
 
 function buildRelease()
 {
     return function() { 
-        var pipeline = preparePipeline();//{ minify:true, mangle:true });
-        pipeline.on( "end", packageRelease );
+        var pipeline = preparePipeline( { srcMaps: false });//{ minify:true, mangle:true });
+        //pipeline.on( "end", packageRelease );
         return pipeline; 
     };
 }
@@ -109,7 +113,7 @@ function buildRelease()
 /// Tasks
 gulp.task( "build", compile() );
 
-gulp.task( "build-release", buildRelease() );
+gulp.task( "build-release", ["clean"], buildRelease() );
 
 gulp.task( "clean", function() {
 	return del( [OUT_DIR+"/**"] );

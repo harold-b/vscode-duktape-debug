@@ -43,14 +43,13 @@
 			"runtimeExecutable" : "${execPath}",
 			"stopOnEntry"       : false,
 			"sourceMaps"        : true,
-			"outDir"            : "${workspaceRoot}/out",
             
             //"preLaunchTask"     : "build",
-            
 			"args": [
-				"--extensionDevelopmentPath=${workspaceRoot}",
-				"--server=4711"
-			]
+				"--extensionDevelopmentPath=${workspaceRoot}"
+			],
+
+            "outFiles": [ "${workspaceRoot}/out/**/*.js" ]
 		}
         
 	]

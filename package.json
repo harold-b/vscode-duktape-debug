@@ -1,77 +1,69 @@
 {
   "name": "duk-debug",
   "displayName": "Duktape Debugger",
-  "version": "0.2.13",
+  "version": "0.3.0",
   "description": "Debug Adapter for Duktape runtimes.",
   "author": "Harold Brenes",
   "publisher": "HaroldBrenes",
   "license": "MIT (See LICENSE.txt)",
-
   "icon": "img/icon.png",
-
   "maintainers": [
     "Harold Brenes <brenes.games@gmail.com> (http://hbrenes.com/cv)"
   ],
-
   "categories": [
     "Debuggers"
   ],
-
   "keywords": [
-    "duktape", "debugger", "runtime", "javascript", "typescript"
+    "duktape",
+    "debugger",
+    "js",
+    "javascript",
+    "typescript"
   ],
-
   "engines": {
-    "vscode": "^1.4.0",
-    "node": "^5.10.0"
+    "vscode": "^1.9.0",
+    "node": "^6.3.0"
   },
-
   "private": true,
-
   "repository": {
     "type": "git",
     "url": "https://github.com/harold-b/vscode-duktape-debug"
   },
-
   "bugs": {
     "url": "https://github.com/harold-b/vscode-duktape-debug/issues"
   },
-
   "files": [
     "out/**",
-    "CHANGELOG.md"
+    "CHANGELOG.md",
+    "VERSION"
   ],
-
   "dependencies": {
-    "vscode-debugprotocol": "^1.11.0-pre.8",
-    "vscode-debugadapter": "^1.11.0-pre.6",
-    "process": "^0.11.2",
-    "source-map": "0.5.3",
-    "utf8": "~2.0.0",
-    "util": "~0.10.3"
+    "bluebird": "^3.5.0",
+    "source-map": "0.5.6",
+    "vscode-debugadapter": "^1.18.0-pre.4",
+    "vscode-debugprotocol": "^1.18.0-pre.2"
   },
-
   "devDependencies": {
-    "bluebird": "^3.4.1",
-    "del": "~2.2.0",
-    "fs-extra": "^0.30.0",
     "gulp": "^3.9.1",
-    "gulp-sourcemaps": "^1.6.0",
-    "gulp-typescript": "^2.13.6",
-    "run-sequence": "~1.1.5",
-    "through2": "^2.0.1",
-    "tslint": "^3.14.0",
-    "uglify-js": "^2.7.0",
-    "vscode": "^0.11.13",
-    "vscode-debugadapter-testsupport": "^1.11.0"
+    "gulp-sourcemaps": "^1.9.1",
+    "gulp-typescript": "^3.1.3",
+    "del": "^2.2.2",
+    "run-sequence": "^1.2.2",
+    "fs-extra": "^2.1.2",
+    "uglify-js": "^2.8.14",
+    "through2": "^2.0.3",
+    "tslint": "^3.15.1",
+    "vscode": "^1.0.3",
+    "typescript": "^2.2.1"
   },
-
   "scripts": {
-    "postinstall": "node node_modules/vscode/bin/install"
+    "prepublish": "node ./node_modules/gulp/bin/gulp.js build-release",
+    "postinstall": "node ./node_modules/vscode/bin/install"
   },
-
-  "main": "./out/extension",
-  "activationEvents": [],
+  "main": "./out/extension.js",
+  "activationEvents": [
+    "onCommand:duk-debug.provideInitialConfigurations"
+  ],
   "contributes": {
     "breakpoints": [
       {
@@ -79,6 +71,9 @@
       },
       {
         "language": "typescript"
+      },
+      {
+        "language": "haxe"
       }
     ],
     "debuggers": [
@@ -87,25 +82,16 @@
         "label": "Duktape JS",
         "program": "./out/DukDebugger.js",
         "runtime": "node",
+
+        "initialConfigurations": "duk-debug.provideInitialConfigurations",
+
         "enableBreakpointsFor": {
           "languageIds": [
             "javascript",
-            "typescript"
+            "typescript",
+            "haxe"
           ]
         },
-        "initialConfigurations": [
-          {
-            "name": "Attach",
-            "type": "duk",
-            "request": "attach",
-            "address": "localhost",
-            "port": 9091,
-            "localRoot": "${workspaceRoot}",
-            "sourceMaps": false,
-            "outDir": null,
-            "stopOnEntry": false
-          }
-        ],
         "configurationAttributes": {
           "attach": {
             "properties": {
@@ -149,10 +135,35 @@
                 ],
                 "description": "The local source root that corresponds to the 'remoteRoot'.",
                 "default": null
+              },
+              "debugLog": {
+                "type": "boolean",
+                "description": "Log to console client-server network traffic and other debug messages. This is an internal development feature but allowed in release mode for the curious.",
+                "default": false
               }
             }
           }
-        }
+        },
+
+        "configurationSnippets": [
+          {
+            "label": "Duktape Attach",
+            "description": "Attach to a running duktape process.",
+            "body": {
+              "name"        : "Attach",
+              "type"        : "duk",
+              "request"     : "attach",
+
+              "address"     : "localhost",
+              "port"        : 9091,
+              "localRoot"   : "${workspaceRoot}",
+              "sourceMaps"  : false,
+              "outDir"      : null,
+              "stopOnEntry" : false,
+              "debugLog"    : false
+            }
+          }
+        ]
       }
     ]
   }

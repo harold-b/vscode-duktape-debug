@@ -6,7 +6,7 @@
 import * as Path from 'path';
 import * as FS from 'fs';
 import * as URL from 'url';
-import {SourceMapConsumer} from 'source-map';
+import {SourceMapConsumer, MappedPosition, Position} from 'source-map';
 import * as PathUtils from './pathUtilities';
 
 const util = require('../node_modules/source-map/lib/util.js');
@@ -458,7 +458,7 @@ export class SourceMap {
 	 * Finds the nearest source location for the given location in the generated file.
 	 * Returns null if sourcemap is invalid.
 	 */
-	public originalPositionFor(line: number, column: number, bias: Bias): SourceMap.MappedPosition {
+	public originalPositionFor(line: number, column: number, bias: Bias):MappedPosition {
 
 		if (!this._smc) {
 			return null;
@@ -495,7 +495,7 @@ export class SourceMap {
 	 * Finds the nearest location in the generated file for the given source location.
 	 * Returns null if sourcemap is invalid.
 	 */
-	public generatedPositionFor(absPath: string, line: number, column: number, bias: Bias): SourceMap.Position {
+	public generatedPositionFor(absPath: string, line: number, column: number, bias: Bias): Position {
 
 		if (!this._smc) {
 			return null;

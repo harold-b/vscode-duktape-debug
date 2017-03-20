@@ -6,11 +6,16 @@
 ///      https://github.com/svaarala/duktape/blob/master/debugger/duk_debug.js
 
 
-import * as Net    from "net"         ;
-import * as EE     from "events"      ;
-import * as assert from "assert"      ;
-import * as Duk    from "./DukConsts" ;
-import * as os     from "os"          ;
+import * as Net     from "net"      ;
+import * as EE      from "events"   ;
+import * as assert  from "assert"   ;
+import * as os      from "os"       ;
+import * as Promise from "bluebird" ;
+import * as Duk     from "./DukBase";
+import { 
+    DukConnection,
+    DukVersion
+} from "./DukConnection"
 
 const MSG_TRACING      :boolean = true;
 const LOG_STATUS_NOTIFY:boolean = false;
@@ -96,6 +101,8 @@ export class DukStatusNotification extends DukNotificationMessage
     }
 }
 
+/// NOTE: @protocol_version: Print, Alert and Log notifications
+///       are not available starting duktape v2.0.0
 export class DukPrintNotification extends DukNotificationMessage
 {
     public message:string;
@@ -370,8 +377,8 @@ export class DukGetHeapObjInfoResponse extends DukResponse
 {
     public properties:Duk.Property[];
 
-    // REQ <int: 0x23> <tval: heapptr|object|pointer> EOM
-    // REP [int: flags> <str/int: key> [<tval: value> OR <obj: getter> <obj: setter>]]* EOM
+    // REQ <int: 0x23> (<heapptr: target> | <object: target> | <pointer: target>) EOM
+    // REP [<int: flags> <str/int: key> [<tval: value> | <obj: getter> <obj: setter>]]* EOM
     constructor( msg:DukDvalueMsg )
     {
         super( Duk.CmdType.GETHEAPOBJINFO );
@@ -404,8 +411,8 @@ export class DukGetHeapObjInfoResponse extends DukResponse
     // We add them both and that is our maximum possible number of properties 
     // that the object may have.
     // See the following docs:
-    // https://github.com/svaarala/duktape/blob/v1.5.0/doc/debugger.rst
-    // https://github.com/svaarala/duktape/blob/v1.5.0/doc/hobject-design.rst
+    // https://github.com/svaarala/duktape/blob/master/doc/debugger.rst
+    // https://github.com/svaarala/duktape/blob/master/doc/hobject-design.rst
     public get maxPropDescRange() : number
     {
         let e_next:Duk.Property, a_size:Duk.Property;
@@ -442,12 +449,11 @@ export class DukGetHeapObjInfoResponse extends DukResponse
     }
 }
 
-// REQ <int: 0x25> <obj: target> <int: idx_start> <int: idx_end> EOM
-// REP [<int: flags> <str/int: key> [<tval: value> OR <obj: getter> <obj: setter>]]* EOM
-
 // Response is in the same format as DukGetHeapObjInfoResponse
 export class DukGetObjPropDescRangeResponse extends DukGetHeapObjInfoResponse
 {
+    // REQ <int: 0x25> <obj: target> <int: idx_start> <int: idx_end> EOM
+    // REP [<int: flags> (<str: key> | <int: key>) (<tval: value> | <obj: getter> <obj: setter>)]* EOM
     constructor( msg:DukDvalueMsg )
     {
         super( msg );
@@ -741,7 +747,6 @@ class PendingRequest
 export enum DukEvent
 {
     disconnected = 0,
-    attached,
 
     // Notification Events
     nfy_status   ,
@@ -766,8 +771,7 @@ export class DukDbgProtocol extends EE.EventEmitter
     private static OUT_BUF_SIZE :number = 1024*1;  // Resizable
     private static IN_BUF_SIZE  :number = 1024*16; // Fixed
 
-    private _state          :State = State.Offline;
-    private _dukSocket      :Net.Socket;
+    private _conn           :DukConnection;
 
     private _outBuf         :DukMsgBuilder;
     private _inBufSize      :number;
@@ -781,14 +785,16 @@ export class DukDbgProtocol extends EE.EventEmitter
     private _requestQueue   :PendingRequest[];      // Requests that have been queued up for execution
     private _curRequest     :PendingRequest;        // Last request made. We're expecting a response to it.
 
-    private _protoVersion   :string = null;
+    private _version        :DukVersion;
 
     private log:Function;
     
     public  info:DukBasicInfoResponse;
 
+    private _emmitedDisonnected:boolean = false;
+
     //-----------------------------------------------------------
-    constructor( logger:Function )
+    constructor( conn:DukConnection, remainderBuf:Buffer, logger:Function )
     {
         super();
 
@@ -802,101 +808,51 @@ export class DukDbgProtocol extends EE.EventEmitter
 
         this._msg        = [];
         this._numDvalues = 0;
+
+        this._conn    = conn;
+        this._version = conn._protoVersion;
+
+        this.reset();
+        
+        this._conn._socket.on( "data", ( data ) => this.onReceiveData( data ) );
+
+        this._conn.once( "error", ( err ) => {
+            this.onDisconnected( `Connection error: ${err}` );
+        });
+
+        this._conn.once( "disconnect", ( reason ) => {
+            this.onDisconnected( reason );
+        });
+
+        if( remainderBuf.length > 0 )
+            this.onReceiveData( remainderBuf )
     }
 
     //-----------------------------------------------------------
-    public attach( ip:string, port:number, timeoutMS:number = 5000 ) : void
+    public disconnect( reason:string = "" ):void
     {
-        assert( this._state == State.Offline );
-
-        if( this._state != State.Offline )
+        if( !this.isConnected )
             return;
 
-        this.log( `Establishing connection with Duktape at ${ip}:${port}` );
-
-        this._state     = State.Connecting;
-        this._dukSocket = new Net.Socket();
-
-        // Check for timeout
-        var timeoutID:NodeJS.Timer = setTimeout( () => {
-
-            clearTimeout( timeoutID );
-
-            if( this._state == State.Connecting )
-            {
-                this.disconnect( "Connection attempt timed-out" );
-            }
-
-            // If the state is not connecting,
-            // the connection was either interrupted or succesful.
-
-        }, timeoutMS );
-
-
-        // On succesful connection
-        this._dukSocket.once( "connect", ( event:Event ) => {
-
-            clearTimeout( timeoutID );
-
-            // Don't know if this can happen, but just in case
-            if( this._state != State.Connecting )
-                return;
-
-            this.log( "Connected. Verifying protocol..." );
-            this._state = State.Verification;
-            this.reset();
-
-            // TODO: Set new timeout for verification?
-
-            // Start listening for data
-            this._dukSocket.on( "data", ( buf:Buffer ) => this.onReceiveData( buf ) );
-
-            this._dukSocket.on( "close", () => {
-                this.log( "Socket closed." );
-            });
-        });
-
-        // On error
-        this._dukSocket.on( "error", (error) => {
-
-            if( this._state == State.Connecting )
-            {
-                // Attempt to reconnect as long as we haven't timed out
-                this._dukSocket.connect( port, ip );
-            }
-            else if( this._state >= State.Verification )
-            {
-                // Connection error
-                this.disconnect( String(error) );
-            }
-            else
-            {
-                // This means the connection attempt timed-out
-                //  or was interrupted by the user. The state is already offline.,
-            }
-
-        });
-
-        this._dukSocket.connect( port, ip );
+        this._conn.closeSocket( reason );
+        this._conn = null;
     }
 
     //-----------------------------------------------------------
-    public disconnect( reason:string = "" ) : void
+    private onDisconnected( reason:string ):void
     {
-        if( this._state == State.Offline )
+        if( this._emmitedDisonnected )
             return;
 
-        if( this._state == State.Connecting )
-            this.log( "Connection attempt cancelled." );
-
-        // Close the socket
-        this._state = State.Offline;
-        
-        this._dukSocket.end();
-        this._dukSocket.destroy();
-        this._dukSocket = null;
-        
+        this._emmitedDisonnected = true;
+        this._conn = null;
         this.emit( DukEvent[DukEvent.disconnected], reason );
+    }
+
+    //-----------------------------------------------------------
+    public get isConnected():boolean
+    {
+        return !(this._conn === null || this._conn === undefined);
     }
 
 /// Requests/Commands
@@ -985,6 +941,9 @@ export class DukDbgProtocol extends EE.EventEmitter
     //-----------------------------------------------------------
     public requestLocalVariables( stackLevel:number ) : Promise<any>
     {
+        /// NOTE: @protocol_version: Before v2, stack level was optional,
+        ///        however, we always write it anyway.
+        // REQ <int: 0x1d> <int: level> EOM
         this._outBuf.clear();
         this._outBuf.writeREQ();
         this._outBuf.writeInt( Duk.CmdType.GETLOCALS );
@@ -1000,9 +959,23 @@ export class DukDbgProtocol extends EE.EventEmitter
         this._outBuf.clear();
         this._outBuf.writeREQ();
         this._outBuf.writeInt( Duk.CmdType.EVAL );
-        this._outBuf.writeString( expression );
-        this._outBuf.writeInt( stackLevel );
-        this._outBuf.writeEOM();
+
+        if( this._version.proto == 1 )
+        {
+            // @protocol_version:1
+            // REQ <int: 0x1e> <str: expression> [<int: level>] EOM
+            this._outBuf.writeString( expression );
+            this._outBuf.writeInt( stackLevel );
+            this._outBuf.writeEOM();
+        }
+        else if( this._version.proto == 2 )
+        {
+            // @protocol_version:2
+            // REQ <int: 0x1e> (<int: level> | <null>) <str: expression> EOM
+            this._outBuf.writeInt( stackLevel );
+            this._outBuf.writeString( expression );
+            this._outBuf.writeEOM();
+        }
 
         return this.sendRequest( Duk.CmdType.EVAL, this._outBuf.finish() );
     }
@@ -1016,6 +989,7 @@ export class DukDbgProtocol extends EE.EventEmitter
             return Promise.reject( null );
         }
 
+        // REQ <int: 0x23> (<heapptr: target> | <object: target> | <pointer: target>) EOM
         this._outBuf.clear();
         this._outBuf.writeREQ();
         this._outBuf.writeInt( Duk.CmdType.GETHEAPOBJINFO );
@@ -1035,6 +1009,7 @@ export class DukDbgProtocol extends EE.EventEmitter
             return Promise.reject( null );
         }
 
+        // REQ <int: 0x24> <obj: target> <str: key> EOM
         this._outBuf.clear();
         this._outBuf.writeREQ();
         this._outBuf.writeInt( Duk.CmdType.GETOBJPROPDESCRANGE );
@@ -1075,11 +1050,6 @@ export class DukDbgProtocol extends EE.EventEmitter
     //-----------------------------------------------------------
     private sendRequest( cmd:number, buf:Buffer ) : Promise<any>
     {
-        assert( this._state == State.Online );
-
-        if( this._state != State.Online )
-            return Promise.reject( "offline" );
-
         var pcontext = new PromiseContext();
 
         let cb = ( resolve, reject:any ) =>
@@ -1110,7 +1080,7 @@ export class DukDbgProtocol extends EE.EventEmitter
     //-----------------------------------------------------------
     private submitRequest( req:PendingRequest ) : boolean
     {
-        assert( this._curRequest == null );
+        assert( this._curRequest == null && this._conn && this._conn._socket );
 
         if( MSG_TRACING )
         {
@@ -1119,7 +1089,9 @@ export class DukDbgProtocol extends EE.EventEmitter
         }
 
         // Send request down the stream
-        if( !this._dukSocket.write( req.buf ) )
+        var socket = this._conn._socket;
+
+        if( !socket.write( req.buf ) )
         {
             this.disconnect( "Failed to write data to socket." );
             return false;
@@ -1133,11 +1105,6 @@ export class DukDbgProtocol extends EE.EventEmitter
     //-----------------------------------------------------------
     private onReceiveData( data:Buffer ) : void
     {
-        assert( this._dukSocket != null && this._state >= State.Verification );
-
-        if( this._dukSocket == null )
-            return;
-
         let buf = this._inBuf;
 
         if( !this.readData( data ) )
@@ -1148,63 +1115,6 @@ export class DukDbgProtocol extends EE.EventEmitter
 
             return;
         }
-
-        if( this._protoVersion == null )
-        {
-            // Attempt to get protocol version
-            if( this._inBufSize > 1024 )
-            {
-                this.log( "Parse error (version identification too long), dropping connection" );
-                this.disconnect( "Parse error (version identification too long), dropping connection" );
-
-                return;
-            }
-
-            // Attempt to get version string
-            for( let i = 0; i < this._inBufSize; i++ )
-            {
-                if( buf[i] == 0x0A )
-                {
-                    let verBuffer = new Buffer( i );
-                    buf.copy( verBuffer, 0, 0, i );
-                    this.consume( i+1 );
-
-                    this._protoVersion = verBuffer.toString( "utf8" );
-                    this.log( "Protocol: " + this._protoVersion );
-                    
-                // TODO: Verify protocol version
-
-                    // Now request the target's info to finalize attach step
-                    this.log( "Requesting target info..." );
-                    
-                    // Switch the state real quick, since this call is protected... hacky...
-                    this._state = State.Online;
-                    this.requestBasicInfo().then( ( r:DukBasicInfoResponse ) => {
-                    
-                        // Save basic info
-                        this.info = r;
-                        this.log( `${r.version} ${r.gitDesc} ${r.targetInfo} ${DukEndianness[r.endianness]}` );
-                        
-                        // Emit attached
-                        this._state = State.Online;
-                        this.emit( DukEvent[DukEvent.attached], true );
-                        
-                    }).catch( ( err ) => {
-                        this.disconnect( `Error obtaining basic info: ${String(err)}` );
-                    });
-                    
-                    // Restore state
-                    this._state = State.Verification;
-
-                    break;
-                }
-            }
-        }
-
-        if( !this._protoVersion )
-            return;     // Still waiting for protocol version or target info
-        
-
         // Attempt to frame a message
         this.readMessages();
 
@@ -1870,16 +1780,6 @@ export class DukDbgProtocol extends EE.EventEmitter
         this._curRequest      = null;
         this._requestQueue    = [];
     }
-
-    //-----------------------------------------------------------
-    private closeSocket() : void
-    {
-        if( !this._dukSocket )
-            return;
-
-
-    }
-
 }
 
 //} // End NS

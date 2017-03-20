@@ -1,16 +1,54 @@
 
-'use strict';
+import * as vscode from "vscode";
+import * as Path   from "path";
 
-import * as vscode from 'vscode';
+const initialConfigurations = [
+	{
+		name        : "Attach",
+		type        : "duk",
+		request     : "attach",
+
+		address     : "localhost",
+		port        : 9091,
+		localRoot   : "${workspaceRoot}",
+		sourceMaps  : false,
+		outDir      : null,
+		stopOnEntry : false,
+		debugLog    : false
+	}
+];
 
 export function activate( context:vscode.ExtensionContext )
 {
-	let disposable = vscode.commands.registerCommand('extension.runDukDebugger', () => {
-        	// NOTE: Placeholder for addding commands in the future
-	});
+	console.log( "Duk Ext Activated" );
 
-	context.subscriptions.push(disposable);
+	const vscmds = vscode.commands;
+	const subs   = context.subscriptions;
+	
+	var extCmds = {
+		"duk-debug.provideInitialConfigurations": () => provideInitialConfigurations()
+	};
+
+	for( var k in extCmds )
+	{
+		var cmd = extCmds[k];
+		subs.push( vscmds.registerCommand( k, cmd ) );
+	}
 }
 
 export function deactivate() {
+}
+
+
+function provideInitialConfigurations():string
+{
+	var cfgs = JSON.stringify( initialConfigurations, null, '\t' )
+				.split( "\n" ).map( l => '\t' + l ).join( '\n' ).trim();
+
+	return [
+		"{",
+		'\t"version": "0.2.0",',
+        '\t"configurations": ' + cfgs,
+		"}"
+	].join( "\n");
 }
