@@ -2,7 +2,11 @@
 
 A [Duktape](https://github.com/svaarala/duktape) debug client for Visual Studio Code.
 
-**Developed for version `1.5.*` of the Duktape runtime. See [References](#references) below for more information.**
+### Supported Duktape Versions:
+- **v1.5.\*+**
+- **v2.*+**
+
+*See (#references) below for more information.*
 
 ![Screenshot](https://raw.githubusercontent.com/harold-b/vscode-duktape-debug/master/img/screenshot.gif)
 
@@ -16,7 +20,7 @@ A [Duktape](https://github.com/svaarala/duktape) debug client for Visual Studio 
  
 
 ## Status
-It works. I'd like to refactor it and polish it more as I find the time.
+It works. I'd like to refactor the code and polish it more as I find the time.
 
 
 ## Usage
@@ -24,6 +28,9 @@ Create a new launch.json configuration file and configure the address and port t
 
 ### Example
 ``` JSON
+// Add a new configuration to your 'launch.json' under 
+// your workspace root/.vscode/ folder.
+// Or select 'Add Configuration' from the debug bar dropdown menu.
 "configurations": [
         {
             "name"        : "Duk Attach",
@@ -51,7 +58,13 @@ If you'd like to see the network traffic exchanged between the client and server
 ## Debug Host (Server) Instructions
 For the debugger client to work with your Duktape host application, you must enable the following preprocessor macros:
 
+
 ``` C
+
+// See the official duktape documentation to learn
+// how to configure these for your specific runtime version:
+// https://github.com/svaarala/duktape/blob/master/doc/duk-config.rst
+
 // Required to enable debugger support:
 #define DUK_USE_DEBUGGER_SUPPORT
 #define DUK_USE_INTERRUPT_COUNTER
@@ -87,12 +100,13 @@ For an example of an application with debugger support, please see [Duktape's co
  - [https://code.visualstudio.com/docs/extensions/overview](https://code.visualstudio.com/docs/extensions/overview)
  - [https://code.visualstudio.com/docs/extensions/example-debuggers](https://code.visualstudio.com/docs/extensions/example-debuggers)
 
-The adapter uses the debugger protocol based on Duktape version 1.5.0 of [debugger.rst](https://github.com/svaarala/duktape/blob/v1.5.0/doc/debugger.rst).
+The adapter uses the debugger protocol for Duktape version 1.5+ of, Including v2.*+. See: [debugger.rst](https://github.com/svaarala/duktape/blob/master/doc/debugger.rst).
 
 
 ## Acknoledgements
 Special thanks to Sami Vaarala for developing Duktape, and for freely sharing it with the community.
 A "thank you" also to the VSCode team for facilitating their open-source IDE and the ability to easily make extensions for it.
+And finally, to those who has contributed to this project via bug reports or pull requests, thank you.
 
 This code contains portions borrowed or adapted from the [vscode nodeJS debugger](https://github.com/Microsoft/vscode-node-debug) and Sami Vaarala's web-based nodeJS [reference implementation](https://github.com/svaarala/duktape/tree/master/debugger) of a Dukatape debug client.
 
