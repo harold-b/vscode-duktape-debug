@@ -266,7 +266,7 @@ class SourceFile
         {
             let pos = this.srcMap.generatedPositionFor( absSourcePath, line, 0, Bias.LEAST_UPPER_BOUND );
             
-            if( pos.line != null )
+            if( pos && pos.line != null )
             {
                 return {
                     path     : this.path,
@@ -805,7 +805,7 @@ class DukDebugSession extends DebugSession
                 line = pos.line;
             }
             else
-                generatedName = args.source.name;
+                generatedName = this.getSourceNameByPath( args.source.path ) || args.source.name;
 
             if( !generatedName )
             {
@@ -1940,7 +1940,11 @@ class DukDebugSession extends DebugSession
                 let srcMap = src.srcMap;
                 for( let i = 0; i < srcMap._sources.length; i++ )
                 {
-                    let srcPath = Path.normalize( Path.join( this._sourceRoot, srcMap._sources[i] ) );
+                    let srcPath = srcMap._sources[i];
+                    if( !Path.isAbsolute( srcPath ) )
+                        srcPath = Path.join( this._sourceRoot, srcPath );
+                    
+                    srcPath = Path.normalize( srcPath );
                     this._sourceToGen[srcPath] = src;
                 }
             }
@@ -1958,13 +1962,17 @@ class DukDebugSession extends DebugSession
     // the source maps of all the generated files 
     // and attempts to find the file in them
     //-----------------------------------------------------------
-    private unmapSourceFile( path:string ) : SourceFile
+    private unmapSourceFile( path:string ):SourceFile
     {
         path        = Path.normalize( path );
         let name    = Path.basename( path );
 
+        // Grab the relative path under the root if this is located there,
+        // or just keep the full path if it's not
+        let pathUnderRoot = Path.dirname( this.getSourceNameByPath( path ) || "" );
+
         if( !this._sourceMaps )
-            return this.mapSourceFile( name );
+            return this.mapSourceFile( Path.join(pathUnderRoot, name) );
         
         let src2gen = this._sourceToGen;
         
@@ -1976,24 +1984,46 @@ class DukDebugSession extends DebugSession
 
         // If we still haven't found anything,
         // we try to map all the source files in the outDir
-        let files:string[] = FS.readdirSync( this._outDir );
+        
+        const scanDir = ( dirPath:string, rootPath:string ) => {
+           
+            // In case the directory doesn't exsist
+            var files:string[];
+            try { files = FS.readdirSync( dirPath ); }
+            catch ( err ) {
+                return;
+            }
 
-        for( let i = 0; i < files.length; i++ )
-        {
-            let f:string = files[i];
-            
             // Ignore non-js files
-            if( f.toLowerCase().lastIndexOf(".js") != f.length - ".js".length )
-                continue;
+            files = files.filter( f => Path.extname( f ).toLocaleLowerCase() === ".js" );
 
-            var stat = FS.lstatSync( Path.join( this._outDir, f ) );
-            if( stat.isDirectory() )        // Ignore dirs, shallow search
-                continue;
-            
-            src = this.mapSourceFile( f );
-            if( src )
-                return src;
-        }
+            for( let i = 0; i < files.length; i++ )
+            {
+                let f:string = files[i];
+
+                var stat = FS.lstatSync( Path.join( dirPath, f ) );
+                if( stat.isDirectory() )        // Ignore dirs, shallow search
+                    continue;
+                
+                src = this.mapSourceFile( Path.join( rootPath, f ) );
+                if( src )
+                    return src;
+            }
+        };
+
+        
+        // Let's construct the folder to scan by combining the path
+        // coming in with the out directory.  The
+        // path coming in may point to a subfolder under "rootPath" 
+        // so this will ensure that we are looking in the right directory
+        let outDirToScan = Path.join( this._outDir, pathUnderRoot );
+
+        // For concatenated transpiled files, the output folder here may not exsist,
+        // since the output is a single file. Therefore no such other directory or 
+        // file mathching the source folder structure may exsist in the output directory.
+        // So we first attempt to scan the path matching the source root structure, then
+        // a flat scan of the outDir.
+        return scanDir( outDirToScan, pathUnderRoot ) || scanDir( this._outDir, "" );
     }
     
     //-----------------------------------------------------------
