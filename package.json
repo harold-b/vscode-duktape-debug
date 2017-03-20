@@ -1,170 +1,166 @@
 {
-  "name": "duk-debug",
-  "displayName": "Duktape Debugger",
-  "version": "0.3.0",
-  "description": "Debug Adapter for Duktape runtimes.",
-  "author": "Harold Brenes",
-  "publisher": "HaroldBrenes",
-  "license": "MIT (See LICENSE.txt)",
-  "icon": "img/icon.png",
-  "maintainers": [
-    "Harold Brenes <brenes.games@gmail.com> (http://hbrenes.com/cv)"
-  ],
-  "categories": [
-    "Debuggers"
-  ],
-  "keywords": [
-    "duktape",
-    "debugger",
-    "js",
-    "javascript",
-    "typescript"
-  ],
-  "engines": {
-    "vscode": "^1.9.0",
-    "node": "^6.3.0"
-  },
-  "private": true,
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/harold-b/vscode-duktape-debug"
-  },
-  "bugs": {
-    "url": "https://github.com/harold-b/vscode-duktape-debug/issues"
-  },
-  "files": [
-    "out/**",
-    "CHANGELOG.md",
-    "VERSION"
-  ],
-  "dependencies": {
-    "bluebird": "^3.5.0",
-    "source-map": "0.5.6",
-    "vscode-debugadapter": "^1.18.0-pre.4",
-    "vscode-debugprotocol": "^1.18.0-pre.2"
-  },
-  "devDependencies": {
-    "gulp": "^3.9.1",
-    "gulp-sourcemaps": "^1.9.1",
-    "gulp-typescript": "^3.1.3",
-    "del": "^2.2.2",
-    "run-sequence": "^1.2.2",
-    "fs-extra": "^2.1.2",
-    "uglify-js": "^2.8.14",
-    "through2": "^2.0.3",
-    "tslint": "^3.15.1",
-    "vscode": "^1.0.3",
-    "typescript": "^2.2.1"
-  },
-  "scripts": {
-    "prepublish": "node ./node_modules/gulp/bin/gulp.js build-release",
-    "postinstall": "node ./node_modules/vscode/bin/install"
-  },
-  "main": "./out/extension.js",
-  "activationEvents": [
-    "onCommand:duk-debug.provideInitialConfigurations"
-  ],
-  "contributes": {
-    "breakpoints": [
-      {
-        "language": "javascript"
-      },
-      {
-        "language": "typescript"
-      },
-      {
-        "language": "haxe"
-      }
+    "name": "duk-debug",
+    "displayName": "Duktape Debugger",
+    "version": "0.4.1",
+    "description": "Debug Adapter for Duktape runtimes.",
+    "author": "Harold Brenes",
+    "publisher": "HaroldBrenes",
+    "license": "MIT (See LICENSE.txt)",
+    "icon": "img/icon.png",
+    "maintainers": [
+        "Harold Brenes <brenes.games@gmail.com> (http://hbrenes.com/cv)"
     ],
-    "debuggers": [
-      {
-        "type": "duk",
-        "label": "Duktape JS",
-        "program": "./out/DukDebugger.js",
-        "runtime": "node",
-
-        "initialConfigurations": "duk-debug.provideInitialConfigurations",
-
-        "enableBreakpointsFor": {
-          "languageIds": [
-            "javascript",
-            "typescript",
-            "haxe"
-          ]
-        },
-        "configurationAttributes": {
-          "attach": {
-            "properties": {
-              "port": {
-                "type": "number",
-                "description": "Debug port to attach to. Default is 9091.",
-                "default": 9091
-              },
-              "address": {
-                "type": "string",
-                "description": "TCP/IP address on which the debug server is listening. Default is 'localhost'.",
-                "default": "localhost"
-              },
-              "timeout": {
-                "type": "number",
-                "description": "Retry for this number of milliseconds to connect to the debug server. Default is 10000 ms.",
-                "default": 10000
-              },
-              "sourceMaps": {
-                "type": "boolean",
-                "description": "Use JavaScript source maps (if they exist).",
-                "default": true
-              },
-              "outDir": {
-                "type": [
-                  "string",
-                  "null"
-                ],
-                "description": "If source maps are enabled, the generated code is expected in this directory. If not specified, the generated code is expected in the same directory as its source.",
-                "default": null
-              },
-              "stopOnEntry": {
-                "type": "boolean",
-                "description": "Automatically stop program after launch.",
-                "default": true
-              },
-              "localRoot": {
-                "type": [
-                  "string",
-                  "null"
-                ],
-                "description": "The local source root that corresponds to the 'remoteRoot'.",
-                "default": null
-              },
-              "debugLog": {
-                "type": "boolean",
-                "description": "Log to console client-server network traffic and other debug messages. This is an internal development feature but allowed in release mode for the curious.",
-                "default": false
-              }
+    "categories": [
+        "Debuggers"
+    ],
+    "keywords": [
+        "duktape",
+        "debugger",
+        "js",
+        "javascript",
+        "typescript"
+    ],
+    "engines": {
+        "vscode": "^1.9.0",
+        "node": "^6.3.0"
+    },
+    "private": true,
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/harold-b/vscode-duktape-debug"
+    },
+    "bugs": {
+        "url": "https://github.com/harold-b/vscode-duktape-debug/issues"
+    },
+    "files": [
+        "out/**",
+        "CHANGELOG.md",
+        "VERSION"
+    ],
+    "dependencies": {
+        "bluebird": "^3.5.0",
+        "source-map": "0.5.6",
+        "vscode-debugadapter": "^1.18.0-pre.4",
+        "vscode-debugprotocol": "^1.18.0-pre.2"
+    },
+    "devDependencies": {
+        "gulp": "^3.9.1",
+        "gulp-sourcemaps": "^1.9.1",
+        "gulp-typescript": "^3.1.3",
+        "del": "^2.2.2",
+        "run-sequence": "^1.2.2",
+        "fs-extra": "^2.1.2",
+        "uglify-js": "^2.8.14",
+        "through2": "^2.0.3",
+        "tslint": "^3.15.1",
+        "vscode": "^1.0.3",
+        "typescript": "^2.2.1"
+    },
+    "scripts": {
+        "prepublish": "node ./node_modules/gulp/bin/gulp.js build-release",
+        "postinstall": "node ./node_modules/vscode/bin/install"
+    },
+    "main": "./out/extension.js",
+    "activationEvents": [
+        "onCommand:duk-debug.provideInitialConfigurations"
+    ],
+    "contributes": {
+        "breakpoints": [
+            {
+                "language": "javascript"
+            },
+            {
+                "language": "typescript"
+            },
+            {
+                "language": "haxe"
             }
-          }
-        },
-
-        "configurationSnippets": [
-          {
-            "label": "Duktape Attach",
-            "description": "Attach to a running duktape process.",
-            "body": {
-              "name"        : "Attach",
-              "type"        : "duk",
-              "request"     : "attach",
-
-              "address"     : "localhost",
-              "port"        : 9091,
-              "localRoot"   : "${workspaceRoot}",
-              "sourceMaps"  : false,
-              "outDir"      : null,
-              "stopOnEntry" : false,
-              "debugLog"    : false
+        ],
+        "debuggers": [
+            {
+                "type": "duk",
+                "label": "Duktape JS",
+                "program": "./out/DukDebugger.js",
+                "runtime": "node",
+                "initialConfigurations": "duk-debug.provideInitialConfigurations",
+                "enableBreakpointsFor": {
+                    "languageIds": [
+                        "javascript",
+                        "typescript",
+                        "haxe"
+                    ]
+                },
+                "configurationAttributes": {
+                    "attach": {
+                        "properties": {
+                            "port": {
+                                "type": "number",
+                                "description": "Debug port to attach to. Default is 9091.",
+                                "default": 9091
+                            },
+                            "address": {
+                                "type": "string",
+                                "description": "TCP/IP address on which the debug server is listening. Default is 'localhost'.",
+                                "default": "localhost"
+                            },
+                            "timeout": {
+                                "type": "number",
+                                "description": "Retry for this number of milliseconds to connect to the debug server. Default is 10000 ms.",
+                                "default": 10000
+                            },
+                            "sourceMaps": {
+                                "type": "boolean",
+                                "description": "Use JavaScript source maps (if they exist).",
+                                "default": true
+                            },
+                            "outDir": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
+                                "description": "If source maps are enabled, the generated code is expected in this directory. If not specified, the generated code is expected in the same directory as its source.",
+                                "default": null
+                            },
+                            "stopOnEntry": {
+                                "type": "boolean",
+                                "description": "Automatically stop program after launch.",
+                                "default": true
+                            },
+                            "localRoot": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
+                                "description": "The local source root that corresponds to the 'remoteRoot'.",
+                                "default": null
+                            },
+                            "debugLog": {
+                                "type": "boolean",
+                                "description": "Log to console client-server network traffic and other debug messages. This is an internal development feature but allowed in release mode for the curious.",
+                                "default": false
+                            }
+                        }
+                    }
+                },
+                "configurationSnippets": [
+                    {
+                        "label": "Duktape Attach",
+                        "description": "Attach to a running duktape process.",
+                        "body": {
+                            "name": "Attach",
+                            "type": "duk",
+                            "request": "attach",
+                            "address": "localhost",
+                            "port": 9091,
+                            "localRoot": "${workspaceRoot}",
+                            "sourceMaps": false,
+                            "outDir": null,
+                            "stopOnEntry": false,
+                            "debugLog": false
+                        }
+                    }
+                ]
             }
-          }
         ]
-      }
-    ]
-  }
+    }
 }
