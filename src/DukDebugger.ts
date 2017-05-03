@@ -2033,9 +2033,7 @@ class DukDebugSession extends DebugSession
                 if( stat.isDirectory() )        // Ignore dirs, shallow search
                     continue;
                 
-                src = this.mapSourceFile( Path.join( rootPath, f ) );
-                if( src )
-                    return src;
+                this.mapSourceFile( Path.join( rootPath, f ) );
             }
         };
 
@@ -2051,7 +2049,10 @@ class DukDebugSession extends DebugSession
         // file mathching the source folder structure may exsist in the output directory.
         // So we first attempt to scan the path matching the source root structure, then
         // a flat scan of the outDir.
-        return scanDir( outDirToScan, pathUnderRoot ) || scanDir( this._outDir, "" );
+        scanDir( outDirToScan, pathUnderRoot );
+        scanDir( this._outDir, "" );
+
+        return src2gen[path];
     }
     
     //-----------------------------------------------------------
