@@ -68,6 +68,8 @@ export interface CommonArguments {
     sourceMaps?: boolean;
     /** Where to look for the generated code. Only used if sourceMaps is true. */
     outDir?: string;
+    /** Do show '__artificial' property while inspecting object or not */
+    artificial?: boolean;
 
     // Debug options
     debugLog?: boolean;
@@ -1593,22 +1595,25 @@ class DukDebugSession extends DebugSession
                 let numArtificial = r.properties.length;
                 let props         = r.properties;
                 
-                // Create a property set for the artificials properties
-                let artificials         = new PropertySet( PropertySetType.Artificials );
-                artificials.handle      = this._dbgState.varHandles.create( artificials );
-                artificials.scope       = propSet.scope;
-
-                // Convert artificials to debugger Variable objets
-                artificials.variables = new Array<Variable>( numArtificial );
-                for( let i=0; i < numArtificial; i++ )
+                if (this._args.artificial)
                 {
-                    let p = r.properties[i];
-                    artificials.variables[i] = new Variable( <string>p.key, String(p.value), 0 );
+                    // Create a property set for the artificials properties
+                    let artificials         = new PropertySet( PropertySetType.Artificials );
+                    artificials.handle      = this._dbgState.varHandles.create( artificials );
+                    artificials.scope       = propSet.scope;
+                    
+                    // Convert artificials to debugger Variable objets
+                    artificials.variables = new Array<Variable>( numArtificial );
+                    for( let i=0; i < numArtificial; i++ )
+                    {
+                        let p = r.properties[i];
+                        artificials.variables[i] = new Variable( <string>p.key, String(p.value), 0 );
+                    }
+                    
+                    // Add artificials node to the property set
+                    propSet.variables.push( new Variable( "__artificial", "{...}", artificials.handle ) );
                 }
-                
-                // Add artificials node to the property set
-                propSet.variables.push( new Variable( "__artificial", "{...}", artificials.handle ) );
-                
+
                 // Get object's 'own' properties
                 let maxOwnProps = r.maxPropDescRange;
                 if( maxOwnProps < 1 )

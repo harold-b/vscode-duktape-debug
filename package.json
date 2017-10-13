@@ -138,6 +138,11 @@
                                 "type": "boolean",
                                 "description": "Log to console client-server network traffic and other debug messages. This is an internal development feature but allowed in release mode for the curious.",
                                 "default": false
+                            },
+                            "artificial": {
+                                "type": "boolean",
+                                "description": "Do show '__artificial' property while inspecting object or not.",
+                                "default": true
                             }
                         }
                     }
