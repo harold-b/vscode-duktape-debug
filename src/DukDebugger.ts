@@ -2010,7 +2010,8 @@ class DukDebugSession extends DebugSession
         let src:SourceFile = null;
 
         // If we still haven't found anything,
-        // we try to map all the source files in the outDir
+        // we try to mapa the source files in the outDir until
+        // we find the matching one.
         const scanDir = ( dirPath:string, rootPath:string ) => {
            
             // In case the directory doesn't exsist
