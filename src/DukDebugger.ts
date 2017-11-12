@@ -457,14 +457,10 @@ class DukDebugSession extends DebugSession
             //    (status.state == DukStatusState.Paused ? "pause" : "running" ) );
 
             // If the status cannot be processed right now, store it for later
-            if (this._processStatus === false)
-            {
+            if( !this._processStatus )
                 this._initialStatus = status;
-            }
             else
-            {
-                this.processStatus(status);
-            }
+                this.processStatus( status );
         });
          
         // Disconnect
@@ -554,22 +550,29 @@ class DukDebugSession extends DebugSession
         this._initResponse          = null;
 
         // Allow processing of status messages, and if one arrived
-        // during initialisation, process that now
+        // during initialization, then consider if we have to process it now
         this._processStatus = true;
-        if(this._initialStatus) {
-            this.processStatus(this._initialStatus);
-        }
+        const isServerPaused = this._initialStatus && this._initialStatus.state == DukStatusState.Paused;
 
         // Make sure that any breakpoints that were left set in
         // case of a broken connection are cleared
         this.removeAllTargetBreakpoints().catch()
         .then( () => {
             
-            // Set initial paused state
+            // Set initial paused state depending on the user configuration
+            // and any status messages we may have already received from the server
             if( this._args.stopOnEntry )
-                this._dukProto.requestPause();
-            else
+            {
+                // Only request a pause if we haven't got a pause status yet
+                if( !isServerPaused )
+                    this._dukProto.requestPause();
+                else
+                    this.processStatus( this._initialStatus );
+            }
+            else if( isServerPaused )
+            {
                 this._dukProto.requestResume();
+            }
         }).catch();
         
         // Let the front end know we're done initializing
@@ -580,7 +583,7 @@ class DukDebugSession extends DebugSession
     //-----------------------------------------------------------
     // Process incoming status messages
     //-----------------------------------------------------------
-    private processStatus(status:DukStatusNotification) : void
+    private processStatus( status:DukStatusNotification ) : void
     {
         // Pause/Unpause
         if( status.state == DukStatusState.Paused )
