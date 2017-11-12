@@ -415,8 +415,8 @@ class DukDebugSession extends DebugSession
     
     private _dbgState       :DbgClientState;
     private _initResponse   :DebugProtocol.Response;
-    
-    private _awaitingInitialStatus:boolean;
+
+    private _processStatus  :boolean;
     private _initialStatus  :DukStatusNotification;
     
     private _expectingBreak    :string  = "debugger";
@@ -453,59 +453,17 @@ class DukDebugSession extends DebugSession
             if( status.state == DukStatusState.Paused )
                 this.dbgLog( "Status Notification: PAUSE" );
 
-            //this.dbgLog( "Status Notification: " + 
+            //this.dbgLog( "Status Notification: " +
             //    (status.state == DukStatusState.Paused ? "pause" : "running" ) );
-            
-            if( !this._initialStatus )
+
+            // If the status cannot be processed right now, store it for later
+            if (this._processStatus === false)
             {
-                if( this._awaitingInitialStatus )
-                {
-                    this._initialStatus         = status;
-                    this._awaitingInitialStatus = false;
-                }
-                else
-                {
-                    // Don't act on any stop commands until it responds to the status we asked for
-                    return;
-                }
-            }
-            
-            // Pause/Unpause
-            if( status.state == DukStatusState.Paused )
-            {
-                // Set stopReason to 'breakpoint' if there's a breakpoint in the stop location
-                let sourceFile:SourceFile = this.mapSourceFile( status.filename );
-                if( sourceFile )
-                {
-                    let line = this.convertDebuggerLineToClient( status.linenumber );
-                    let pos  = sourceFile.generated2Source( line );
-
-                    let bp   = this._breakpoints.find( pos.fileName, pos.line );
-
-                    if( bp )
-                        this._expectingBreak = "breakpoint";
-                }
-
-                this._dbgState.reset();
-                this._dbgState.paused = true;
-                this.sendEvent( new StoppedEvent( this._expectingBreak, DukDebugSession.THREAD_ID ) );
-                this._expectingBreak = "debugger";
+                this._initialStatus = status;
             }
             else
             {
-                // Resume
-                //this._dbgState.reset();
-
-                if( this._dbgState.paused )
-                {
-                    // NOTE: Not doing this because it seems to cause issues.
-                    // it suddenly continues unexpectedly, even if calling this event
-                    // in correct synchronized order.
-                    //this.dbgLog( "Sending CONTINUE event to FE");
-                    //this.sendEvent( new ContinuedEvent( DukDebugSession.THREAD_ID, true) );
-                }
-
-                this._dbgState.paused = false;
+                this.processStatus(status);
             }
         });
          
@@ -540,9 +498,9 @@ class DukDebugSession extends DebugSession
     //----------------------------------------------------------- 
     private beginInit( response:DebugProtocol.Response ) : void
     {
-        this._initialStatus         = null;
-        this._awaitingInitialStatus = false;
-        
+        this._initialStatus = null;
+        this._processStatus = false;
+
         // Attached to Debug Server
         let conn:DukConnection;
         let args = <AttachRequestArguments>this._args;
@@ -594,13 +552,18 @@ class DukDebugSession extends DebugSession
         
         this._dbgState.reset();
         this._initResponse          = null;
-        
-        // Make sure that any breakpoints that were left set in 
+
+        // Allow processing of status messages, and if one arrived
+        // during initialisation, process that now
+        this._processStatus = true;
+        if(this._initialStatus) {
+            this.processStatus(this._initialStatus);
+        }
+
+        // Make sure that any breakpoints that were left set in
         // case of a broken connection are cleared
         this.removeAllTargetBreakpoints().catch()
         .then( () => {
-                
-            this._awaitingInitialStatus = true;
             
             // Set initial paused state
             if( this._args.stopOnEntry )
@@ -613,7 +576,51 @@ class DukDebugSession extends DebugSession
         this.sendResponse( response );
         this.sendEvent( new InitializedEvent() );
     }
-    
+
+    //-----------------------------------------------------------
+    // Process incoming status messages
+    //-----------------------------------------------------------
+    private processStatus(status:DukStatusNotification) : void
+    {
+        // Pause/Unpause
+        if( status.state == DukStatusState.Paused )
+        {
+            // Set stopReason to 'breakpoint' if there's a breakpoint in the stop location
+            let sourceFile:SourceFile = this.mapSourceFile( status.filename );
+            if( sourceFile )
+            {
+                let line = this.convertDebuggerLineToClient( status.linenumber );
+                let pos  = sourceFile.generated2Source( line );
+
+                let bp   = this._breakpoints.find( pos.fileName, pos.line );
+
+                if( bp )
+                    this._expectingBreak = "breakpoint";
+            }
+
+            this._dbgState.reset();
+            this._dbgState.paused = true;
+            this.sendEvent( new StoppedEvent( this._expectingBreak, DukDebugSession.THREAD_ID ) );
+            this._expectingBreak = "debugger";
+        }
+        else
+        {
+            // Resume
+            //this._dbgState.reset();
+
+            if( this._dbgState.paused )
+            {
+                // NOTE: Not doing this because it seems to cause issues.
+                // it suddenly continues unexpectedly, even if calling this event
+                // in correct synchronized order.
+                //this.dbgLog( "Sending CONTINUE event to FE");
+                //this.sendEvent( new ContinuedEvent( DukDebugSession.THREAD_ID, true) );
+            }
+
+            this._dbgState.paused = false;
+        }
+    }
+
     /// DebugSession
     //-----------------------------------------------------------
     // The 'initialize' request is the first request called by the frontend
