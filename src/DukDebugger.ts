@@ -228,7 +228,7 @@ class SourceFilePosition
 }
 
 // Represents a source file on disk.
-// It always points to the generated source file, even if sourceMaps are enabled.
+// It always points to the generated/output source file, even if sourceMaps are enabled.
 class SourceFile
 {
     public id         :number;
@@ -647,12 +647,11 @@ class DukDebugSession extends DebugSession
         this._launchType    = LaunchType.Launch;
         this._targetProgram = args.program;
         this._sourceRoot    = this.normPath( args.cwd );
-        this._stopOnEntry   = args.stopOnEntry;
-        
+        this._stopOnEntry   = args.stopOnEntry;   
     }
     
     //-----------------------------------------------------------
-    protected attachRequest( response: DebugProtocol.AttachResponse, args: AttachRequestArguments ) : void
+    protected attachRequest( response: DebugProtocol.AttachResponse, args: DebugProtocol.AttachRequestArguments ) : void
     {
         this.dbgLog( "[FE] attachRequest" );
         
@@ -1980,9 +1979,9 @@ class DukDebugSession extends DebugSession
     }
 
     //-----------------------------------------------------------
-    // Given the original filename, looks for a
+    // Given the original source file name, this looks for a
     // src-to-gen mapped SourceFile that has that name.
-    // If id doesn't find one, it looks into 
+    // If it doesn't find one, it looks into 
     // the source maps of all the generated files 
     // and attempts to find the file in them
     //-----------------------------------------------------------
@@ -1991,12 +1990,12 @@ class DukDebugSession extends DebugSession
         path        = Path.normalize( path );
         let name    = Path.basename( path );
 
-        // Grab the relative path under the root if this is located there,
+        // Grab the relative path under the source root if this is located there,
         // or just keep the full path if it's not
         let pathUnderRoot = Path.dirname( this.getSourceNameByPath( path ) || "" );
 
         if( !this._sourceMaps )
-            return this.mapSourceFile( Path.join(pathUnderRoot, name) );
+            return this.mapSourceFile( Path.join( pathUnderRoot, name ) );
         
         let src2gen = this._sourceToGen;
         
@@ -2008,7 +2007,6 @@ class DukDebugSession extends DebugSession
 
         // If we still haven't found anything,
         // we try to map all the source files in the outDir
-        
         const scanDir = ( dirPath:string, rootPath:string ) => {
            
             // In case the directory doesn't exsist
@@ -2030,23 +2028,23 @@ class DukDebugSession extends DebugSession
                     continue;
                 
                 src = this.mapSourceFile( Path.join( rootPath, f ) );
-                if( src )
+                if( src )  
                     return src;
             }
         };
 
         
         // Let's construct the folder to scan by combining the path
-        // coming in with the out directory.  The
-        // path coming in may point to a subfolder under "rootPath" 
+        // coming in with the out directory. The path coming in may
+        // point to a subfolder under "rootPath" 
         // so this will ensure that we are looking in the right directory
         let outDirToScan = Path.join( this._outDir, pathUnderRoot );
 
-        // For concatenated transpiled files, the output folder here may not exsist,
-        // since the output is a single file. Therefore no such other directory or 
-        // file mathching the source folder structure may exsist in the output directory.
-        // So we first attempt to scan the path matching the source root structure, then
-        // a flat scan of the outDir.
+        // For transpiled sourcess that have been concatenated into a single file,
+        // the output folder here may not exsist, since the output is a single file.
+        // Therefore no such other directory or file mathching the source folder structure 
+        // may exsist in the output directory.  So we first attempt to scan the path matching 
+        // the source root structure, then a flat scan of the outDir.
         return scanDir( outDirToScan, pathUnderRoot ) || scanDir( this._outDir, "" );
     }
     
