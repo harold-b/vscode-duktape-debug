@@ -14,6 +14,7 @@ const initialConfigurations = [
 		sourceMaps  : false,
 		outDir      : null,
 		stopOnEntry : false,
+		artificial  : true,
 		debugLog    : false
 	}
 ];

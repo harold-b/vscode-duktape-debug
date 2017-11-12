@@ -68,6 +68,8 @@ export interface CommonArguments {
     sourceMaps?: boolean;
     /** Where to look for the generated code. Only used if sourceMaps is true. */
     outDir?: string;
+    /** Do show '__artificial' property while inspecting object or not */
+    artificial?: boolean;
 
     // Debug options
     debugLog?: boolean;
@@ -643,25 +645,15 @@ class DukDebugSession extends DebugSession
     }
     
     //-----------------------------------------------------------
-    protected launchRequest( response: DebugProtocol.LaunchResponse, args: LaunchRequestArguments ) : void
+    protected launchRequest( response: DebugProtocol.LaunchResponse, args: DebugProtocol.LaunchRequestArguments ) : void
     {
         /// TODO: Support launch
         this.dbgLog( "[FE] launchRequest" );
         this.sendErrorResponse( response, 0, "Launching is not currently supported. Use Attach.");
-        return;
-        
-        this.dbgLog( "Program : " + args.program );
-        this.dbgLog( "CWD     : " + args.cwd );
-        this.dbgLog( "Stop On Entry  : " + args.stopOnEntry );
-        
-        this._launchType    = LaunchType.Launch;
-        this._targetProgram = args.program;
-        this._sourceRoot    = this.normPath( args.cwd );
-        this._stopOnEntry   = args.stopOnEntry;   
     }
     
     //-----------------------------------------------------------
-    protected attachRequest( response: DebugProtocol.AttachResponse, args: DebugProtocol.AttachRequestArguments ) : void
+    protected attachRequest( response: DebugProtocol.AttachResponse, args: AttachRequestArguments ) : void
     {
         this.dbgLog( "[FE] attachRequest" );
         
@@ -1275,11 +1267,15 @@ class DukDebugSession extends DebugSession
                     }
                     else
                     {
-                        response.body = {
-                            result: String( r.result ),
-                            variablesReference: frame.scopes[0].properties.handle
-                        };
-                        this.sendResponse( response );    
+                        this.resolveObject(args.expression, r.result, frame.scopes[0]).then(
+                            (v) => 
+                        {
+                            response.body = {
+                                result: v.value,
+                                variablesReference: v.variablesReference
+                            };
+                            this.sendResponse( response );    
+                        })
                     }
                     
                 }).catch( err =>{
@@ -1608,22 +1604,25 @@ class DukDebugSession extends DebugSession
                 let numArtificial = r.properties.length;
                 let props         = r.properties;
                 
-                // Create a property set for the artificials properties
-                let artificials         = new PropertySet( PropertySetType.Artificials );
-                artificials.handle      = this._dbgState.varHandles.create( artificials );
-                artificials.scope       = propSet.scope;
-
-                // Convert artificials to debugger Variable objets
-                artificials.variables = new Array<Variable>( numArtificial );
-                for( let i=0; i < numArtificial; i++ )
+                if (this._args.artificial)
                 {
-                    let p = r.properties[i];
-                    artificials.variables[i] = new Variable( <string>p.key, String(p.value), 0 );
+                    // Create a property set for the artificials properties
+                    let artificials         = new PropertySet( PropertySetType.Artificials );
+                    artificials.handle      = this._dbgState.varHandles.create( artificials );
+                    artificials.scope       = propSet.scope;
+                    
+                    // Convert artificials to debugger Variable objets
+                    artificials.variables = new Array<Variable>( numArtificial );
+                    for( let i=0; i < numArtificial; i++ )
+                    {
+                        let p = r.properties[i];
+                        artificials.variables[i] = new Variable( <string>p.key, String(p.value), 0 );
+                    }
+                    
+                    // Add artificials node to the property set
+                    propSet.variables.push( new Variable( "__artificial", "{...}", artificials.handle ) );
                 }
-                
-                // Add artificials node to the property set
-                propSet.variables.push( new Variable( "__artificial", "{...}", artificials.handle ) );
-                
+
                 // Get object's 'own' properties
                 let maxOwnProps = r.maxPropDescRange;
                 if( maxOwnProps < 1 )
@@ -1658,6 +1657,77 @@ class DukDebugSession extends DebugSession
         }
         
         return Promise.resolve( [] );
+    }
+
+    private resolveObject(name: string, value: Duk.TValueUnion, scope: DukScope): Promise<Variable>
+    {
+        if( value instanceof Duk.TValObject )
+        {
+            // Check if this object's pointer has already been cached
+            let ptrStr     = ((<Duk.TValObject>value).ptr).toString();
+            let objPropSet = this._dbgState.ptrHandles[ptrStr];
+            
+            if( objPropSet )
+            {
+                return Promise.resolve(new Variable(name, objPropSet.displayName, objPropSet.handle));
+            }
+            else
+            {
+                return new Promise<Variable>(
+                    (resolve, reject) => 
+                {
+                    // This object's properties have not been resolved yet,
+                    // resolve it for the first time
+                    objPropSet           = new PropertySet( PropertySetType.Object );
+                    objPropSet.scope       = scope;
+                    objPropSet.heapPtr     = (<Duk.TValObject>value).ptr;
+                    objPropSet.classType   = (<Duk.TValObject>value).classID;
+                    objPropSet.displayName = "Object";
+                    
+                    objPropSet.handle           = this._dbgState.varHandles.create( objPropSet );
+
+                    let variable = new Variable(name, objPropSet.displayName, objPropSet.handle);
+                    
+                    // Register with the pointer map
+                    this._dbgState.ptrHandles[ptrStr] = objPropSet;
+
+                    // Try to obtain standard built-in object's dispaly name 
+                    // by querying the 'class_name' artificial property.
+                    this._dukProto.requestInspectHeapObj( objPropSet.heapPtr )
+                    .then( (r:DukGetHeapObjInfoResponse) => {
+
+                        var clsName:Duk.Property = ArrayX.firstOrNull( r.properties, v => v.key === "class_name" );
+
+                        if( !clsName || clsName.value === <any>"Object" )
+                        {
+                            // For plain 'Object' types, we want to try to 
+                            // obtain its constructor's name.
+                            this.getConstructorNameByObject( objPropSet.heapPtr ).then(
+                                (className) =>
+                                {
+                                    variable.value         = className;
+                                    resolve(variable);
+                                });
+                        }
+                        else
+                        {
+                            objPropSet.displayName = <string>clsName.value;
+                            variable.value         = objPropSet.displayName;
+
+                            resolve(variable);
+                        }
+                    });
+
+                });
+            }
+        
+        }
+        else
+        {
+            // Non-expandable value
+            return Promise.resolve(new Variable(name, 
+                typeof value === "string" ? `"${value}"` : String( value )));
+        }
     }
     
     //-----------------------------------------------------------
