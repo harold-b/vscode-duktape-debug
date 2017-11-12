@@ -1964,8 +1964,12 @@ class DukDebugSession extends DebugSession
                 for( let i = 0; i < srcMap._sources.length; i++ )
                 {
                     let srcPath = srcMap._sources[i];
-                    if( !Path.isAbsolute( srcPath ) )
-                        srcPath = Path.join( this._sourceRoot, srcPath );
+                    if( !Path.isAbsolute( srcPath ) ) 
+                    {
+                        // According to https://sourcemaps.info/spec.html#h.75yo6yoyk7x5 :
+                        // if the sources are not absolute URLs after prepending of the “sourceRoot”, the sources are resolved relative to the SourceMap
+                        srcPath = Path.resolve(Path.dirname(this.normPath(Path.join(this._outDir, name))), srcPath);
+                    }
                     
                     srcPath = Path.normalize( srcPath );
                     this._sourceToGen[srcPath] = src;
