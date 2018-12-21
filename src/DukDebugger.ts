@@ -493,7 +493,7 @@ export class DukDebugSession extends DebugSession
         });
 
         this._dukProto.on( DukEvent[DukEvent.nfy_appmsg], ( e:DukAppNotification ) => {
-            this.logToClient( e.messages.join(' '), "stdout" );
+            this.logToClient( e.messages.join(' ') + '\n' );
         });
     }
 
@@ -518,7 +518,7 @@ export class DukDebugSession extends DebugSession
                 this.logToClient( "Attached to duktape debugger.\n" );
                 conn.removeAllListeners();
 
-                this.logToClient( `Protocol ID: ${version.id}` );
+                this.logToClient( `Protocol ID: ${version.id}\n` );
 
                 var proto:any;
 
