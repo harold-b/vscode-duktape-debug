@@ -4,4 +4,5 @@ builds/
 out/
 */bin/**
 */obj/**
-*.vsix.DS_Store
+*.vsix
+.DS_Store
