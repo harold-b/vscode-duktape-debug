@@ -81,7 +81,7 @@ export interface CommonArguments {
 type HObjectClassID = number;
 
 // This interface should always match the schema found in the node-debug extension manifest.
-export interface LaunchRequestArguments extends CommonArguments {
+export interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments, CommonArguments {
     /** An absolute path to the program to debug. */
     program: string;
     /** Optional arguments passed to the debuggee. */
@@ -99,7 +99,7 @@ export interface LaunchRequestArguments extends CommonArguments {
 }
 
 // This interface should always match the schema found in the node-debug extension manifest.
-export interface AttachRequestArguments extends CommonArguments {
+export interface AttachRequestArguments extends DebugProtocol.AttachRequestArguments, CommonArguments {
     /** The debug port to attach to. */
     port: number;
     /** The TCP/IP address of the port (remote addresses only supported for node >= 5.0). */
@@ -558,7 +558,7 @@ export class DukDebugSession extends DebugSession
 
         // Make sure that any breakpoints that were left set in
         // case of a broken connection are cleared
-        this.removeAllTargetBreakpoints().catch()
+        this.removeAllTargetBreakpoints().catch( () => {} )
         .then( () => {
             
             // Set initial paused state depending on the user configuration
@@ -575,7 +575,7 @@ export class DukDebugSession extends DebugSession
             {
                 this._dukProto.requestResume();
             }
-        }).catch();
+        }).catch( () => {} );
         
         // Let the front end know we're done initializing
         this.sendResponse( response );
@@ -716,18 +716,18 @@ export class DukDebugSession extends DebugSession
 
         this.dbgLog( "Clearing breakpoints on target." );
         this.removeAllTargetBreakpoints()
-        .catch()
+        .catch( () => {} )
         .then( () => {
             
             // At this point the remote socket may have been closed.
             var isConnected = this._dukProto.isConnected;
 
             ( ( isConnected && this._dukProto.requestDetach()) || Promise.resolve() )
-            .catch()
+            .catch( () => {} )
             .then( () => doDisconnect() );  // This will be redundant if the detach 
                                             // response was received succesfully.
         })
-        .catch();
+        .catch( () => {} );
     }
     
     //-----------------------------------------------------------
@@ -798,7 +798,7 @@ export class DukDebugSession extends DebugSession
 
                 removedBPs.push(bp);
             })
-            .catch() // Simply don't add the breakpoint if it failed.
+            .catch( () => {} ) // Simply don't add the breakpoint if it failed.
             .then(() => {
                 // Remove the next one
                 return doRemoveBreakpoints( i+1 );
@@ -839,7 +839,7 @@ export class DukDebugSession extends DebugSession
                 //this.dbgLog( "BRK: " + r.index + " ( " + bp.line + ")");
                 addedBPs.push( bp );
             })
-            .catch() // Simply don't add the breakpoint if it failed.
+            .catch( () => {} ) // Simply don't add the breakpoint if it failed.
             .then(() => {
                 
                 // Go to the next one
@@ -850,7 +850,7 @@ export class DukDebugSession extends DebugSession
         // Execute requests
         doRemoveBreakpoints( 0 )
         .then( () => doAddBreakpoints( 0 ) )
-        .catch()
+        .catch( () => {} )
         .then( () => {
 
             // Send response
@@ -1906,7 +1906,7 @@ export class DukDebugSession extends DebugSession
                 return Promise.resolve( propSet ); 
             });
         })
-        .catch()
+        .catch( () => {} )
         .then( () => {
             return Promise.resolve( propSet );
          });
@@ -1997,7 +1997,7 @@ export class DukDebugSession extends DebugSession
                 else
                 {
                     let isglob = <string>r.result === "[object global]" ? true : false;
-                    return isglob;
+                    return Promise.resolve( isglob );
                 } 
             },
             
