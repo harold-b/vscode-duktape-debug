@@ -166,6 +166,19 @@ export class DukDetachingNotification extends DukNotificationMessage
     public message    :string;
 }
 
+/// NOTE: @protocol_version: Print, Alert and Log notifications
+///       are not available starting duktape v2.0.0
+export class DukAppNotification extends DukNotificationMessage
+{
+    public messages:string[];
+
+    constructor( msg:DukDvalueMsg )
+    {
+        super( Duk.NotifyType.PRINT );
+        this.messages = msg.slice(2, msg.length - 1).map(m => m.value != null ? m.value.toString() : null);
+    }
+}
+
 /// Requests
 export class DukRequest extends DukProtoMessage
 {
@@ -755,6 +768,7 @@ export enum DukEvent
     nfy_log      ,
     nfy_throw    ,
     nfy_detaching,
+    nfy_appmsg    ,
 }
 
 enum State
@@ -1557,8 +1571,7 @@ export class DukDbgProtocol extends EE.EventEmitter
                 break;
 
                 case Duk.NotifyType.APP_MSG:
-                    // Ignored for now
-                    //throw new Error( "Unimplemented" );
+                    this.emit( DukEvent[DukEvent.nfy_appmsg], new DukAppNotification( msg ) );
                 break;
             }
         }
