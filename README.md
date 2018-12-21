@@ -3,7 +3,7 @@
 A [Duktape](https://github.com/svaarala/duktape) debug client for Visual Studio Code.
 
 ### Notes
-This extension is forked from [Harold Bernes](https://github.com/harold-b/vscode-duktape-debug) and has been updated to work with the latest VS Code and contains additional bug fixes.
+This extension is forked from [Harold Brenes](https://github.com/harold-b/vscode-duktape-debug) and has been updated to work with the latest VS Code and contains additional bug fixes.
 
 ### Supported Duktape Versions:
 - **v1.5.\*+**
