@@ -14,7 +14,7 @@ import * as Path from 'path';
 import * as FS   from 'fs';
 import * as util from 'util';
 import * as assert from 'assert';
-import { ISourceMaps, SourceMaps, SourceMap, Bias } from './sourceMaps';
+import { ISourceMaps, SourceMaps, SourceMap, Bias, MappingResult } from './sourceMaps';
 import * as PathUtils from './pathUtilities';
 
 import * as Promise from "bluebird"     ;
@@ -33,6 +33,7 @@ import {
     DukAlertNotification,
     DukLogNotification,
     DukThrowNotification,
+    DukAppNotification,
     
     // Responses
     DukListBreakResponse,
@@ -51,6 +52,7 @@ import {
 //import { DukDbgProtocol as DukDebugProto2_0_0 } from "./v2.0.0/DukDbgProtocol";
 
 import * as Duk from "./DukBase";
+import { SourceMapConsumer } from 'source-map';
 
 
  // Arguments shared between Launch and Attach requests.
@@ -81,7 +83,7 @@ export interface CommonArguments {
 type HObjectClassID = number;
 
 // This interface should always match the schema found in the node-debug extension manifest.
-export interface LaunchRequestArguments extends CommonArguments {
+export interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments, CommonArguments {
     /** An absolute path to the program to debug. */
     program: string;
     /** Optional arguments passed to the debuggee. */
@@ -99,7 +101,7 @@ export interface LaunchRequestArguments extends CommonArguments {
 }
 
 // This interface should always match the schema found in the node-debug extension manifest.
-export interface AttachRequestArguments extends CommonArguments {
+export interface AttachRequestArguments extends DebugProtocol.AttachRequestArguments, CommonArguments {
     /** The debug port to attach to. */
     port: number;
     /** The TCP/IP address of the port (remote addresses only supported for node >= 5.0). */
@@ -486,8 +488,44 @@ export class DukDebugSession extends DebugSession
         
         // Throw
         this._dukProto.on( DukEvent[DukEvent.nfy_throw], ( e:DukThrowNotification ) => {
-            this.logToClient( `Exception thrown @${e.fileName}:${e.lineNumber}: ${e.message}\n`, "stderr" );
             this._expectingBreak = "Exception";
+
+            var sendEvent = function () {
+                var source: Source = new Source(e.fileName, Path.resolve(this._outDir, e.fileName));
+                var outputEventOptions = {
+                    source: source,
+                    line: e.lineNumber,
+                    column: 1,
+                };
+                this.logToClient( `Exception thrown: ${e.message}\n`, "stderr", outputEventOptions );
+            }.bind(this);
+
+            if (this._sourceMaps) {
+                var sourceMap: SourceMap = this._sourceMaps.FindSourceToGeneratedMapping(Path.resolve(this._outDir, e.fileName));
+                if (sourceMap && sourceMap._loading) {
+                    sourceMap._loading.then(() => {
+                        var mappingResult: MappingResult = this._sourceMaps.MapToSource(Path.resolve(this._outDir, e.fileName), e.lineNumber, 0);
+                        if (!mappingResult) {
+                            sendEvent();
+                            return;
+                        }
+                        var source: Source = new Source(e.fileName, mappingResult.path);
+                        var outputEventOptions = {
+                            source: source,
+                            line: mappingResult.line,
+                            column: mappingResult.column,
+                        };
+                        this.logToClient( `Exception thrown: ${e.message}\n`, "stderr", outputEventOptions );
+                    });
+                    return;
+                }
+            }
+
+            sendEvent();
+        });
+
+        this._dukProto.on( DukEvent[DukEvent.nfy_appmsg], ( e:DukAppNotification ) => {
+            this.logToClient( e.messages.join(' ') + '\n' );
         });
     }
 
@@ -512,7 +550,7 @@ export class DukDebugSession extends DebugSession
                 this.logToClient( "Attached to duktape debugger.\n" );
                 conn.removeAllListeners();
 
-                this.logToClient( `Protocol ID: ${version.id}` );
+                this.logToClient( `Protocol ID: ${version.id}\n` );
 
                 var proto:any;
 
@@ -558,7 +596,7 @@ export class DukDebugSession extends DebugSession
 
         // Make sure that any breakpoints that were left set in
         // case of a broken connection are cleared
-        this.removeAllTargetBreakpoints().catch()
+        this.removeAllTargetBreakpoints().catch( () => {} )
         .then( () => {
             
             // Set initial paused state depending on the user configuration
@@ -575,7 +613,7 @@ export class DukDebugSession extends DebugSession
             {
                 this._dukProto.requestResume();
             }
-        }).catch();
+        }).catch( () => {} );
         
         // Let the front end know we're done initializing
         this.sendResponse( response );
@@ -716,18 +754,18 @@ export class DukDebugSession extends DebugSession
 
         this.dbgLog( "Clearing breakpoints on target." );
         this.removeAllTargetBreakpoints()
-        .catch()
+        .catch( () => {} )
         .then( () => {
             
             // At this point the remote socket may have been closed.
             var isConnected = this._dukProto.isConnected;
 
             ( ( isConnected && this._dukProto.requestDetach()) || Promise.resolve() )
-            .catch()
+            .catch( () => {} )
             .then( () => doDisconnect() );  // This will be redundant if the detach 
                                             // response was received succesfully.
         })
-        .catch();
+        .catch( () => {} );
     }
     
     //-----------------------------------------------------------
@@ -737,16 +775,6 @@ export class DukDebugSession extends DebugSession
         
         let filePath = Path.normalize( args.source.path );
 
-        // Try to find the source file
-        let src:SourceFile = this.unmapSourceFile( filePath );
-
-        if( !src )
-        {
-            this.dbgLog( "Unknown source file: " + filePath);
-            this.sendErrorResponse( response, 0, "SetBreakPoint failed" ); 
-            return;
-        }
-        
         let inBreaks:DebugProtocol.SourceBreakpoint[]  = args.breakpoints;  // Breakpoints the file currently has set
 
         // Determine which breakpoints we're adding and which we are removing
@@ -783,6 +811,31 @@ export class DukDebugSession extends DebugSession
         // Prepare to remove and add breakpoints
         let doRemoveBreakpoints: ( i:number ) => Promise<any>;
         let doAddBreakpoints   : ( i:number ) => Promise<any>;
+        let doFindSourceFile   : ( bp:DukBreakPoint ) => Promise<SourceFile>;
+
+        doFindSourceFile = ( bp: DukBreakPoint ) => {
+            // Try to find the source file
+            let src:SourceFile = this.unmapSourceFile( filePath );
+
+            if( !src )
+            {
+                let log:string = "Unknown source file: " + filePath;
+                this.dbgLog( log );
+                this.sendErrorResponse( response, 0, "SetBreakPoint failed" ); 
+                return Promise.reject( log );
+            }
+
+            // not sure why this would be null?
+            if (!src.srcMap) {
+                return Promise.resolve( src );
+            }
+
+            return new Promise((resolve, reject) => {
+                src.srcMap._loading
+                .then( () => resolve( src ) )
+                .catch( (e) => reject( e ) )
+            })
+        }
 
         doRemoveBreakpoints = ( i:number ) =>
         {
@@ -798,7 +851,7 @@ export class DukDebugSession extends DebugSession
 
                 removedBPs.push(bp);
             })
-            .catch() // Simply don't add the breakpoint if it failed.
+            .catch( () => {} ) // Simply don't add the breakpoint if it failed.
             .then(() => {
                 // Remove the next one
                 return doRemoveBreakpoints( i+1 );
@@ -814,43 +867,46 @@ export class DukDebugSession extends DebugSession
             let line         :number        = bp.line;
             let generatedName:string        = null;
 
-            // Get the correct file and line
-            if( src.srcMap )
-            {
-                let pos       = src.source2Generated( filePath, line );
-                generatedName = pos.fileName;
-                line = pos.line;
-            }
-            else
-                generatedName = this.getSourceNameByPath( args.source.path ) || args.source.name;
+            return doFindSourceFile( bp )
+            .then( src => {
 
-            if( !generatedName )
-            {
-                // Cannot set breakpoint, go to the next one
-                return doAddBreakpoints( i+1 );
-            }
+                // Get the correct file and line
+                if( src.srcMap )
+                {
+                    let pos       = src.source2Generated( filePath, line );
+                    generatedName = pos.fileName;
+                    line = pos.line;
+                }
+                else
+                    generatedName = this.getSourceNameByPath( args.source.path ) || args.source.name;
 
-            return this._dukProto.requestSetBreakpoint( generatedName, line )
-            .then( (r:DukAddBreakResponse) => {
-                // Immediately update breakpoint map. Indices may change for subsequent requests.
-                this._breakpoints.addBreakpoints( [bp] );
-                
-                /// Save the breakpoints to the file source
-                //this.dbgLog( "BRK: " + r.index + " ( " + bp.line + ")");
-                addedBPs.push( bp );
+                if( !generatedName )
+                {
+                    // Cannot set breakpoint, go to the next one
+                    return doAddBreakpoints( i+1 );
+                }
+
+                return this._dukProto.requestSetBreakpoint( generatedName, line )
+                .then( (r:DukAddBreakResponse) => {
+                    // Immediately update breakpoint map. Indices may change for subsequent requests.
+                    this._breakpoints.addBreakpoints( [bp] );
+
+                    /// Save the breakpoints to the file source
+                    //this.dbgLog( "BRK: " + r.index + " ( " + bp.line + ")");
+                    addedBPs.push( bp );
+                })
+                .catch( () => {} ) // Simply don't add the breakpoint if it failed.
+                .then(() => {
+
+                    // Go to the next one
+                    return doAddBreakpoints( i+1 );
+                });
             })
-            .catch() // Simply don't add the breakpoint if it failed.
-            .then(() => {
-                
-                // Go to the next one
-                return doAddBreakpoints( i+1 );
-            });
         }
 
-        // Execute requests
         doRemoveBreakpoints( 0 )
         .then( () => doAddBreakpoints( 0 ) )
-        .catch()
+        .catch( (e) => {} )
         .then( () => {
 
             // Send response
@@ -859,7 +915,7 @@ export class DukDebugSession extends DebugSession
             let outBreaks = new Array<Breakpoint>( addedBPs.length );
             for( let i = 0; i < addedBPs.length; i++ )
                 outBreaks[i] = new Breakpoint( true, addedBPs[i].line)
-            
+
             response.body = { breakpoints: outBreaks };
             this.sendResponse( response );
         });
@@ -1906,7 +1962,7 @@ export class DukDebugSession extends DebugSession
                 return Promise.resolve( propSet ); 
             });
         })
-        .catch()
+        .catch( () => {} )
         .then( () => {
             return Promise.resolve( propSet );
          });
@@ -1997,7 +2053,7 @@ export class DukDebugSession extends DebugSession
                 else
                 {
                     let isglob = <string>r.result === "[object global]" ? true : false;
-                    return isglob;
+                    return Promise.resolve( isglob );
                 } 
             },
             
@@ -2119,9 +2175,15 @@ export class DukDebugSession extends DebugSession
                 if( stat.isDirectory() )        // Ignore dirs, shallow search
                     continue;
                 
-                src = this.mapSourceFile( Path.join( rootPath, f ) );
-                if( src )  
-                    return src;
+                var candidate = this.mapSourceFile( Path.join( rootPath, f ) );
+                if (candidate.name == name)
+                    return candidate;
+                if (!candidate.srcMap)
+                    return;
+                for (var candidateFile of candidate.srcMap._sources) {
+                    if (candidateFile && Path.resolve(this._outDir, candidateFile) == path)
+                        return candidate;
+                }
             }
         };
 
@@ -2183,9 +2245,11 @@ export class DukDebugSession extends DebugSession
     }
     
     //-----------------------------------------------------------
-    private logToClient( msg:string, category?:string ) : void
+    private logToClient( msg:string, category?:string, outputEventOptions?:object ) : void
     {
-        this.sendEvent( new OutputEvent( msg, category ) );
+        var outputEvent = new OutputEvent( msg, category );
+        Object.assign(outputEvent.body, outputEventOptions);
+        this.sendEvent( outputEvent );
         console.log( msg );
     }
 

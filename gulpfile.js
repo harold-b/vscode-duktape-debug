@@ -113,15 +113,15 @@ function buildRelease()
 /// Tasks
 gulp.task( "build", compile() );
 
-gulp.task( "build-release", ["clean"], buildRelease() );
-
 gulp.task( "clean", function() {
 	return del( [OUT_DIR+"/**"] );
 });
 
-gulp.task( "watch", ["build"], function() {
+gulp.task( "build-release", gulp.series( "clean", buildRelease() ) );
+
+gulp.task( "watch", gulp.series( "build", function() {
     gulp.watch( "./src/**/*.ts", ["build"] );
-});
+}));
 
 gulp.task( "lint", function() {
    var tslint      = require( 'gulp-tslint' );
