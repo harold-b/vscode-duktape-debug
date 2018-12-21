@@ -33,6 +33,7 @@ import {
     DukAlertNotification,
     DukLogNotification,
     DukThrowNotification,
+    DukAppNotification,
     
     // Responses
     DukListBreakResponse,
@@ -488,6 +489,10 @@ export class DukDebugSession extends DebugSession
         this._dukProto.on( DukEvent[DukEvent.nfy_throw], ( e:DukThrowNotification ) => {
             this.logToClient( `Exception thrown @${e.fileName}:${e.lineNumber}: ${e.message}\n`, "stderr" );
             this._expectingBreak = "Exception";
+        });
+
+        this._dukProto.on( DukEvent[DukEvent.nfy_appmsg], ( e:DukAppNotification ) => {
+            this.logToClient( e.messages.join(' '), "stdout" );
         });
     }
 
