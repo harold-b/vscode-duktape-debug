@@ -6,7 +6,7 @@
 import * as Path from 'path';
 import * as FS from 'fs';
 import * as URL from 'url';
-import {SourceMapConsumer, MappedPosition, Position} from 'source-map';
+import {SourceMapConsumer, MappedPosition, Position, BasicSourceMapConsumer} from 'source-map';
 import * as PathUtils from './pathUtilities';
 
 const util = require('../node_modules/source-map/lib/util.js');
@@ -335,6 +335,7 @@ export class SourceMap {
 	public _sources: string[];			// the sources of the generated file (relative to sourceRoot)
 	public _sourceRoot: string;			// the common prefix for the source (can be a URL)
 	public _smc: SourceMapConsumer;		// the source map
+	public _loading: Promise<BasicSourceMapConsumer>;
 
 
 	public constructor(mapPath: string, generatedPath: string, json: string) {
@@ -376,9 +377,18 @@ export class SourceMap {
 					: source;
 			});
 		try {
-			this._smc = new SourceMapConsumer(sm);
+			this._loading = new Promise((resolve, reject) => {
+				new SourceMapConsumer(sm)
+				.then(smc => {
+					this._smc = smc
+					resolve(smc);
+				}).catch(e => {
+					reject(e);
+				});
+			});
 		} catch (e) {
 			// ignore exception and leave _smc undefined
+			this._loading = Promise.reject(e);
 		}
 	}
 

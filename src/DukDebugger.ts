@@ -51,6 +51,7 @@ import {
 //import { DukDbgProtocol as DukDebugProto2_0_0 } from "./v2.0.0/DukDbgProtocol";
 
 import * as Duk from "./DukBase";
+import { SourceMapConsumer } from 'source-map';
 
 
  // Arguments shared between Launch and Attach requests.
@@ -798,7 +799,10 @@ export class DukDebugSession extends DebugSession
 
                 removedBPs.push(bp);
             })
-            .catch( () => {} ) // Simply don't add the breakpoint if it failed.
+            .catch( () => {
+
+                console.log('breakpoint faike;');
+            } ) // Simply don't add the breakpoint if it failed.
             .then(() => {
                 // Remove the next one
                 return doRemoveBreakpoints( i+1 );
@@ -839,7 +843,10 @@ export class DukDebugSession extends DebugSession
                 //this.dbgLog( "BRK: " + r.index + " ( " + bp.line + ")");
                 addedBPs.push( bp );
             })
-            .catch( () => {} ) // Simply don't add the breakpoint if it failed.
+            .catch( () => {
+                console.log('breakpoint faike;');
+
+            } ) // Simply don't add the breakpoint if it failed.
             .then(() => {
                 
                 // Go to the next one
@@ -847,22 +854,33 @@ export class DukDebugSession extends DebugSession
             });
         }
 
+        let loadedSourceMap: () => void = () => {
+            doRemoveBreakpoints( 0 )
+            .then( () => doAddBreakpoints( 0 ) )
+            .catch( (e) => {
+                console.log(e);
+            } )
+            .then( () => {
+
+                // Send response
+                addedBPs = persistBPs.concat( addedBPs );
+
+                let outBreaks = new Array<Breakpoint>( addedBPs.length );
+                for( let i = 0; i < addedBPs.length; i++ )
+                    outBreaks[i] = new Breakpoint( true, addedBPs[i].line)
+
+                response.body = { breakpoints: outBreaks };
+                this.sendResponse( response );
+            });
+        }
+
         // Execute requests
-        doRemoveBreakpoints( 0 )
-        .then( () => doAddBreakpoints( 0 ) )
-        .catch( () => {} )
-        .then( () => {
-
-            // Send response
-            addedBPs = persistBPs.concat( addedBPs );
-
-            let outBreaks = new Array<Breakpoint>( addedBPs.length );
-            for( let i = 0; i < addedBPs.length; i++ )
-                outBreaks[i] = new Breakpoint( true, addedBPs[i].line)
-            
-            response.body = { breakpoints: outBreaks };
-            this.sendResponse( response );
-        });
+        if (src.srcMap) {
+            src.srcMap._loading.then(loadedSourceMap);
+        }
+        else {
+            loadedSourceMap();
+        }
     }
     
     //-----------------------------------------------------------

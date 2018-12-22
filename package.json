@@ -39,7 +39,7 @@
     ],
     "dependencies": {
         "bluebird": "^3.5.3",
-        "source-map": "0.5.6",
+        "source-map": "^0.7.3",
         "vscode-debugadapter": "^1.33.0",
         "vscode-debugprotocol": "^1.33.0"
     },
