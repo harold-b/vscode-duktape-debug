@@ -2137,9 +2137,15 @@ export class DukDebugSession extends DebugSession
                 if( stat.isDirectory() )        // Ignore dirs, shallow search
                     continue;
                 
-                src = this.mapSourceFile( Path.join( rootPath, f ) );
-                if( src )  
-                    return src;
+                var candidate = this.mapSourceFile( Path.join( rootPath, f ) );
+                if (candidate.name == name)
+                    return candidate;
+                if (!candidate.srcMap)
+                    return;
+                for (var candidateFile of candidate.srcMap._sources) {
+                    if (candidateFile && Path.resolve(this._outDir, candidateFile) == path)
+                        return candidate;
+                }
             }
         };
 
