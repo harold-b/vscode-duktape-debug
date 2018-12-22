@@ -819,7 +819,10 @@ export class DukDebugSession extends DebugSession
 
                 removedBPs.push(bp);
             })
-            .catch( () => {} ) // Simply don't add the breakpoint if it failed.
+            .catch( () => {
+
+                console.log('breakpoint faike;');
+            } ) // Simply don't add the breakpoint if it failed.
             .then(() => {
                 // Remove the next one
                 return doRemoveBreakpoints( i+1 );
@@ -870,7 +873,10 @@ export class DukDebugSession extends DebugSession
                     return doAddBreakpoints( i+1 );
                 });
             })
-            .catch( () => {} ) // Simply don't add the breakpoint if it failed.
+            .catch( () => {
+                console.log('breakpoint faike;');
+
+            } ) // Simply don't add the breakpoint if it failed.
             .then(() => {
 
                 // Go to the next one
@@ -878,21 +884,33 @@ export class DukDebugSession extends DebugSession
             });
         }
 
-        doRemoveBreakpoints( 0 )
-        .then( () => doAddBreakpoints( 0 ) )
-        .catch( () => {} )
-        .then( () => {
+        let loadedSourceMap: () => void = () => {
+            doRemoveBreakpoints( 0 )
+            .then( () => doAddBreakpoints( 0 ) )
+            .catch( (e) => {
+                console.log(e);
+            } )
+            .then( () => {
 
-            // Send response
-            addedBPs = persistBPs.concat( addedBPs );
+                // Send response
+                addedBPs = persistBPs.concat( addedBPs );
 
-            let outBreaks = new Array<Breakpoint>( addedBPs.length );
-            for( let i = 0; i < addedBPs.length; i++ )
-                outBreaks[i] = new Breakpoint( true, addedBPs[i].line)
+                let outBreaks = new Array<Breakpoint>( addedBPs.length );
+                for( let i = 0; i < addedBPs.length; i++ )
+                    outBreaks[i] = new Breakpoint( true, addedBPs[i].line)
 
-            response.body = { breakpoints: outBreaks };
-            this.sendResponse( response );
-        });
+                response.body = { breakpoints: outBreaks };
+                this.sendResponse( response );
+            });
+        }
+
+        // Execute requests
+        if (src.srcMap) {
+            src.srcMap._loading.then(loadedSourceMap);
+        }
+        else {
+            loadedSourceMap();
+        }
     }
 
     //-----------------------------------------------------------
