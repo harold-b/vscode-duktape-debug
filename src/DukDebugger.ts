@@ -738,16 +738,6 @@ export class DukDebugSession extends DebugSession
         
         let filePath = Path.normalize( args.source.path );
 
-        // Try to find the source file
-        let src:SourceFile = this.unmapSourceFile( filePath );
-
-        if( !src )
-        {
-            this.dbgLog( "Unknown source file: " + filePath);
-            this.sendErrorResponse( response, 0, "SetBreakPoint failed" ); 
-            return;
-        }
-        
         let inBreaks:DebugProtocol.SourceBreakpoint[]  = args.breakpoints;  // Breakpoints the file currently has set
 
         // Determine which breakpoints we're adding and which we are removing
@@ -784,6 +774,31 @@ export class DukDebugSession extends DebugSession
         // Prepare to remove and add breakpoints
         let doRemoveBreakpoints: ( i:number ) => Promise<any>;
         let doAddBreakpoints   : ( i:number ) => Promise<any>;
+        let doFindSourceFile   : ( bp:DukBreakPoint ) => Promise<SourceFile>;
+
+        doFindSourceFile = ( bp: DukBreakPoint ) => {
+            // Try to find the source file
+            let src:SourceFile = this.unmapSourceFile( filePath );
+
+            if( !src )
+            {
+                let log:string = "Unknown source file: " + filePath;
+                this.dbgLog( log );
+                this.sendErrorResponse( response, 0, "SetBreakPoint failed" ); 
+                return Promise.reject( log );
+            }
+
+            // not sure why this would be null?
+            if (!src.srcMap) {
+                return Promise.resolve( src );
+            }
+
+            return new Promise((resolve, reject) => {
+                src.srcMap._loading
+                .then( () => resolve( src ) )
+                .catch( (e) => reject( e ) )
+            })
+        }
 
         doRemoveBreakpoints = ( i:number ) =>
         {
@@ -818,69 +833,59 @@ export class DukDebugSession extends DebugSession
             let line         :number        = bp.line;
             let generatedName:string        = null;
 
-            // Get the correct file and line
-            if( src.srcMap )
-            {
-                let pos       = src.source2Generated( filePath, line );
-                generatedName = pos.fileName;
-                line = pos.line;
-            }
-            else
-                generatedName = this.getSourceNameByPath( args.source.path ) || args.source.name;
+            return doFindSourceFile( bp )
+            .then( src => {
 
-            if( !generatedName )
-            {
-                // Cannot set breakpoint, go to the next one
-                return doAddBreakpoints( i+1 );
-            }
+                // Get the correct file and line
+                if( src.srcMap )
+                {
+                    let pos       = src.source2Generated( filePath, line );
+                    generatedName = pos.fileName;
+                    line = pos.line;
+                }
+                else
+                    generatedName = this.getSourceNameByPath( args.source.path ) || args.source.name;
 
-            return this._dukProto.requestSetBreakpoint( generatedName, line )
-            .then( (r:DukAddBreakResponse) => {
-                // Immediately update breakpoint map. Indices may change for subsequent requests.
-                this._breakpoints.addBreakpoints( [bp] );
-                
-                /// Save the breakpoints to the file source
-                //this.dbgLog( "BRK: " + r.index + " ( " + bp.line + ")");
-                addedBPs.push( bp );
+                if( !generatedName )
+                {
+                    // Cannot set breakpoint, go to the next one
+                    return doAddBreakpoints( i+1 );
+                }
+
+                return this._dukProto.requestSetBreakpoint( generatedName, line )
+                .then( (r:DukAddBreakResponse) => {
+                    // Immediately update breakpoint map. Indices may change for subsequent requests.
+                    this._breakpoints.addBreakpoints( [bp] );
+
+                    /// Save the breakpoints to the file source
+                    //this.dbgLog( "BRK: " + r.index + " ( " + bp.line + ")");
+                    addedBPs.push( bp );
+                })
+                .catch( () => {
+                } ) // Simply don't add the breakpoint if it failed.
+                .then(() => {
+
+                    // Go to the next one
+                    return doAddBreakpoints( i+1 );
+                });
             })
-            .catch( () => {
-                console.log('breakpoint faike;');
-
-            } ) // Simply don't add the breakpoint if it failed.
-            .then(() => {
-                
-                // Go to the next one
-                return doAddBreakpoints( i+1 );
-            });
         }
 
-        let loadedSourceMap: () => void = () => {
-            doRemoveBreakpoints( 0 )
-            .then( () => doAddBreakpoints( 0 ) )
-            .catch( (e) => {
-                console.log(e);
-            } )
-            .then( () => {
+        doRemoveBreakpoints( 0 )
+        .then( () => doAddBreakpoints( 0 ) )
+        .catch( (e) => {} )
+        .then( () => {
 
-                // Send response
-                addedBPs = persistBPs.concat( addedBPs );
+            // Send response
+            addedBPs = persistBPs.concat( addedBPs );
 
-                let outBreaks = new Array<Breakpoint>( addedBPs.length );
-                for( let i = 0; i < addedBPs.length; i++ )
-                    outBreaks[i] = new Breakpoint( true, addedBPs[i].line)
+            let outBreaks = new Array<Breakpoint>( addedBPs.length );
+            for( let i = 0; i < addedBPs.length; i++ )
+                outBreaks[i] = new Breakpoint( true, addedBPs[i].line)
 
-                response.body = { breakpoints: outBreaks };
-                this.sendResponse( response );
-            });
-        }
-
-        // Execute requests
-        if (src.srcMap) {
-            src.srcMap._loading.then(loadedSourceMap);
-        }
-        else {
-            loadedSourceMap();
-        }
+            response.body = { breakpoints: outBreaks };
+            this.sendResponse( response );
+        });
     }
     
     //-----------------------------------------------------------
