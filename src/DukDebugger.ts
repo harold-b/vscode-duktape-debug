@@ -814,10 +814,7 @@ export class DukDebugSession extends DebugSession
 
                 removedBPs.push(bp);
             })
-            .catch( () => {
-
-                console.log('breakpoint faike;');
-            } ) // Simply don't add the breakpoint if it failed.
+            .catch( () => {} ) // Simply don't add the breakpoint if it failed.
             .then(() => {
                 // Remove the next one
                 return doRemoveBreakpoints( i+1 );
@@ -861,8 +858,7 @@ export class DukDebugSession extends DebugSession
                     //this.dbgLog( "BRK: " + r.index + " ( " + bp.line + ")");
                     addedBPs.push( bp );
                 })
-                .catch( () => {
-                } ) // Simply don't add the breakpoint if it failed.
+                .catch( () => {} ) // Simply don't add the breakpoint if it failed.
                 .then(() => {
 
                     // Go to the next one
