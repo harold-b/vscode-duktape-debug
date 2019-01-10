@@ -783,7 +783,7 @@ export class DukDbgProtocol extends EE.EventEmitter
 {
 
     private static OUT_BUF_SIZE :number = 1024*1;  // Resizable
-    private static IN_BUF_SIZE  :number = 1024*16; // Fixed
+    private static IN_BUF_SIZE  :number = 1024*1024; // Fixed
 
     private _conn           :DukConnection;
 
