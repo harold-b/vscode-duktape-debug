@@ -1,7 +1,7 @@
 {
     "name": "duk-debug",
     "displayName": "Duktape Debugger",
-    "version": "0.4.7",
+    "version": "0.4.8",
     "description": "Debug Adapter for Duktape runtimes.",
     "author": "Koushik Dutta (originally Harold Brenes)",
     "publisher": "koush",
