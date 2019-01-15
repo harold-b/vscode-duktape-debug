@@ -497,7 +497,7 @@ export class DukDebugSession extends DebugSession
                     line: e.lineNumber,
                     column: 1,
                 };
-                this.logToClient( `Exception thrown\n`, "stderr", outputEventOptions );
+                this.logToClient( `Exception thrown: ${e.message}\n`, "stderr", outputEventOptions );
             }
 
             if (this._sourceMaps) {
@@ -515,7 +515,7 @@ export class DukDebugSession extends DebugSession
                             line: mappingResult.line,
                             column: mappingResult.column,
                         };
-                        this.logToClient( `Exception thrown\n`, "stderr", outputEventOptions );
+                        this.logToClient( `Exception thrown: ${e.message}\n`, "stderr", outputEventOptions );
                     });
                 }
             }
