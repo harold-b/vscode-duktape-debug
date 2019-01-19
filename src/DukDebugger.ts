@@ -490,7 +490,7 @@ export class DukDebugSession extends DebugSession
         this._dukProto.on( DukEvent[DukEvent.nfy_throw], ( e:DukThrowNotification ) => {
             this._expectingBreak = "Exception";
 
-            function sendEvent() {
+            var sendEvent = function () {
                 var source: Source = new Source(e.fileName, Path.resolve(this._outDir, e.fileName));
                 var outputEventOptions = {
                     source: source,
@@ -498,7 +498,7 @@ export class DukDebugSession extends DebugSession
                     column: 1,
                 };
                 this.logToClient( `Exception thrown: ${e.message}\n`, "stderr", outputEventOptions );
-            }
+            }.bind(this);
 
             if (this._sourceMaps) {
                 var sourceMap: SourceMap = this._sourceMaps.FindSourceToGeneratedMapping(Path.resolve(this._outDir, e.fileName));
