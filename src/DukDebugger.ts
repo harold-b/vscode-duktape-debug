@@ -490,6 +490,38 @@ export class DukDebugSession extends DebugSession
         this._dukProto.on( DukEvent[DukEvent.nfy_throw], ( e:DukThrowNotification ) => {
             this.logToClient( `Exception thrown @${e.fileName}:${e.lineNumber}: ${e.message}\n`, "stderr" );
             this._expectingBreak = "Exception";
+
+            var sendEvent = function () {
+                var source: Source = new Source(e.fileName, Path.resolve(this._outDir, e.fileName));
+                var outputEventOptions = {
+                    source: source,
+                    line: e.lineNumber,
+                    column: 1,
+                };
+                this.logToClient( `Exception thrown: ${e.message}\n`, "stderr", outputEventOptions );
+            }.bind(this);
+
+            if (this._sourceMaps) {
+                var sourceMap: SourceMap = this._sourceMaps.FindSourceToGeneratedMapping(Path.resolve(this._outDir, e.fileName));
+                if (sourceMap && sourceMap._loading) {
+                    sourceMap._loading.then(() => {
+                        var mappingResult: MappingResult = this._sourceMaps.MapToSource(Path.resolve(this._outDir, e.fileName), e.lineNumber, 0);
+                        if (!mappingResult) {
+                            sendEvent();
+                            return;
+                        }
+                        var source: Source = new Source(e.fileName, mappingResult.path);
+                        var outputEventOptions = {
+                            source: source,
+                            line: mappingResult.line,
+                            column: mappingResult.column,
+                        };
+                        this.logToClient( `Exception thrown: ${e.message}\n`, "stderr", outputEventOptions );
+                    });
+                }
+            }
+
+            sendEvent();
         });
 
         this._dukProto.on( DukEvent[DukEvent.nfy_appmsg], ( e:DukAppNotification ) => {
