@@ -518,6 +518,7 @@ export class DukDebugSession extends DebugSession
                         };
                         this.logToClient( `Exception thrown: ${e.message}\n`, "stderr", outputEventOptions );
                     });
+                    return;
                 }
             }
 
