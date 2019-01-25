@@ -253,7 +253,7 @@ class SourceFile
         {
             let pos = this.srcMap.originalPositionFor( line, 0, Bias.LEAST_UPPER_BOUND );
 
-            if( pos.line != null )
+            if( pos && pos.line != null )
             {
                 return {
                     path     : pos.source,
@@ -449,7 +449,7 @@ export class DukDebugSession extends DebugSession
     //-----------------------------------------------------------
     private initDukDbgProtocol( conn:DukConnection, buf:Buffer) : void
     {
-        this._dukProto = new DukDbgProtocol( conn, buf, ( msg ) => this.dbgLog(msg) );
+        this._dukProto = new DukDbgProtocol( ( msg ) => this.dbgLog(msg) );
 
         // Status
         this._dukProto.on( DukEvent[DukEvent.nfy_status], ( status:DukStatusNotification ) => {
@@ -527,6 +527,9 @@ export class DukDebugSession extends DebugSession
         this._dukProto.on( DukEvent[DukEvent.nfy_appmsg], ( e:DukAppNotification ) => {
             this.logToClient( e.messages.join(' ') + '\n' );
         });
+
+        // Connect after callbacks have been attached to finish initialisation
+        this._dukProto.connect(conn, buf);
     }
 
     //-----------------------------------------------------------
@@ -2200,10 +2203,10 @@ export class DukDebugSession extends DebugSession
                     continue;
 
                 var candidate = this.mapSourceFile( Path.join( rootPath, f ) );
-                if (candidate.name == name)
+                if (candidate.name == Path.join( pathUnderRoot, name ) )
                     return candidate;
                 if (!candidate.srcMap)
-                    return;
+                    continue;
                 for (var candidateFile of candidate.srcMap._sources) {
                     if (candidateFile && Path.resolve(this._outDir, candidateFile) == path)
                         return candidate;
