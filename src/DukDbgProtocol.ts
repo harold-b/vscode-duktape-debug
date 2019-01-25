@@ -840,7 +840,7 @@ export class DukDbgProtocol extends EE.EventEmitter
             this.onDisconnected( reason );
         }); 
         
-        if ( remainderBuf.length > 1 )
+        if ( remainderBuf.length > 0 )
             this.onReceiveData(remainderBuf);
     }
 
