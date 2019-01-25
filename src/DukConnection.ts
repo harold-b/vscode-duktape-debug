@@ -37,8 +37,6 @@ export class DukConnection extends EE.EventEmitter
     constructor()
     {
         super();
-
-
     }
 
     //-----------------------------------------------------------

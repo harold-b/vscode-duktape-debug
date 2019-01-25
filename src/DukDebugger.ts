@@ -26,7 +26,7 @@ import {
     DukEvent,
     DukStatusState,
     DukScopeMask,
-    
+
     /// Notifications
     DukStatusNotification,
     DukPrintNotification,
@@ -34,7 +34,7 @@ import {
     DukLogNotification,
     DukThrowNotification,
     DukAppNotification,
-    
+
     // Responses
     DukListBreakResponse,
     DukAddBreakResponse,
@@ -45,7 +45,7 @@ import {
     DukGetHeapObjInfoResponse,
     DukGetObjPropDescRangeResponse,
     DukGetClosureResponse
-   
+
 } from "./DukDbgProtocol";
 
 //import { DukDbgProtocol as DukDebugProto1_5_0 } from "./v1.5.0/DukDbgProtocol";
@@ -123,16 +123,16 @@ class ArrayX
         for( let i=0; i < target.length; i++ )
             if( comparer( target[i] ) )
                 return target[i];
-                
+
         return null;
     }
-    
+
     public static convert<T,U>( target:Array<T>, converter:( value:T ) => U ) : Array<U>
     {
         let result = new Array<U>( target.length );
         for( let i=0; i < target.length; i++ )
             result[i] = converter( target[i] );
-            
+
         return result;
     }
 }
@@ -160,7 +160,7 @@ class BreakPointMap
 {
     // Duktape keeps a contiguous breakpoint buffer.
     // Their IDs are based on their position in the buffer,
-    // therefore when one breakpoint is removed in the buffer and 
+    // therefore when one breakpoint is removed in the buffer and
     // leaves a hole, all breakpoints following that index will have
     // their id changed implicitly. So we replicated the buffer on the client.
     public _breakpoints:DukBreakPoint[] = [];
@@ -194,7 +194,7 @@ class BreakPointMap
         let bps = this._breakpoints;
 
         remList.forEach( b => {
-            for( let i = 0; i < bps.length; i++ ) 
+            for( let i = 0; i < bps.length; i++ )
             {
                 if( bps[i].dukIdx === b.dukIdx ) {
                     bps[i] = null;
@@ -238,7 +238,7 @@ class SourceFile
     public id         :number;
     public name       :string;
     public path       :string;
-    
+
     public srcMapPath :string;
     public srcMap     :SourceMap;
 
@@ -252,8 +252,8 @@ class SourceFile
         if( this.srcMap )
         {
             let pos = this.srcMap.originalPositionFor( line, 0, Bias.LEAST_UPPER_BOUND );
-            
-            if( pos.line != null )
+
+            if( pos && pos.line != null )
             {
                 return {
                     path     : pos.source,
@@ -276,7 +276,7 @@ class SourceFile
         if( this.srcMap )
         {
             let pos = this.srcMap.generatedPositionFor( absSourcePath, line, 0, Bias.LEAST_UPPER_BOUND );
-            
+
             if( pos && pos.line != null )
             {
                 return {
@@ -314,7 +314,7 @@ class PropertySet
 
     // Object class type ( for Object set types )
     public classType :HObjectClassID = 0;   // TODO: remove this, deprecated.
-    
+
     public constructor( type:PropertySetType )
     {
         this.type   = type;
@@ -327,7 +327,7 @@ class DukScope
     public name       :string;
     public stackFrame :DukStackFrame;
     public properties :PropertySet;
-    
+
     public constructor( name:string, stackFrame:DukStackFrame, properties:PropertySet )
     {
         this.name       = name;
@@ -341,9 +341,9 @@ class DukStackFrame
     public handle     :number;
     public source     :SourceFile;
 
-    public fileName   :string;      // We keep a path here, in addition to the SourceFile in 
+    public fileName   :string;      // We keep a path here, in addition to the SourceFile in
     public filePath   :string;      // case it's a different file than the SourceFile because of SourceMaps
-                                    
+
     public funcName   :string;
     public lineNumber :number;
     public pc         :number;
@@ -371,12 +371,12 @@ class PtrPropDict {  [key:string]:PropertySet };
 class DbgClientState
 {
     public paused        :boolean;
-    
+
     public ptrHandles   :PtrPropDict;            // Access to property sets via pointers
     public varHandles   :Handles<PropertySet>;   // Handles to property sets
     public stackFrames  :Handles<DukStackFrame>;
     public scopes       :Handles<DukScope>;
-    
+
     public reset() : void
     {
         this.paused         = false;
@@ -395,7 +395,7 @@ class ErrorCode
 export class DukDebugSession extends DebugSession
 {
     private static THREAD_ID = 1;
-        
+
     private _args           :AttachRequestArguments|LaunchRequestArguments;
 
     private _nextSourceID   :number         = 1;
@@ -416,13 +416,13 @@ export class DukDebugSession extends DebugSession
     private _outDir         :string;
     private _stopOnEntry    :boolean;
     private _dukProto       :DukDbgProtocol;
-    
+
     private _dbgState       :DbgClientState;
     private _initResponse   :DebugProtocol.Response;
 
     private _processStatus  :boolean;
     private _initialStatus  :DukStatusNotification;
-    
+
     private _expectingBreak    :string  = "debugger";
     private _expectingContinue :boolean = false;
     private _isDisconnecting   :boolean = false;    // True if the client initiated a disconnect.
@@ -430,7 +430,7 @@ export class DukDebugSession extends DebugSession
     private _scopeMask:DukScopeMask = DukScopeMask.AllButGlobals;
 
     private _dbgLog:boolean = false;
-  
+
     //-----------------------------------------------------------
     public constructor()
     {
@@ -439,21 +439,21 @@ export class DukDebugSession extends DebugSession
         // this debugger uses zero-based lines and columns
         this.setDebuggerLinesStartAt1   ( true );
         this.setDebuggerColumnsStartAt1 ( true );
-        
+
         this._dbgState    = new DbgClientState();
         this._sources     = {};
         this._sourceToGen = {};
         this._breakpoints._breakpoints = [];
     }
-    
+
     //-----------------------------------------------------------
     private initDukDbgProtocol( conn:DukConnection, buf:Buffer) : void
     {
-        this._dukProto = new DukDbgProtocol( conn, buf, ( msg ) => this.dbgLog(msg) ); 
-        
+        this._dukProto = new DukDbgProtocol( ( msg ) => this.dbgLog(msg) );
+
         // Status
         this._dukProto.on( DukEvent[DukEvent.nfy_status], ( status:DukStatusNotification ) => {
-            
+
             if( status.state == DukStatusState.Paused )
                 this.dbgLog( "Status Notification: PAUSE" );
 
@@ -466,26 +466,26 @@ export class DukDebugSession extends DebugSession
             else
                 this.processStatus( status );
         });
-         
+
         // Disconnect
         this._dukProto.once( DukEvent[DukEvent.disconnected], ( reason:string) => {
             this.logToClient( `Disconnected: ${ this._isDisconnecting ? "Client disconnected" : reason}\n` );
             this.sendEvent( new TerminatedEvent() );
         });
-        
+
         // Output
         this._dukProto.on( DukEvent[DukEvent.nfy_print], ( e:DukPrintNotification ) => {
             this.logToClient( e.message, "stdout" );
         });
-        
+
         this._dukProto.on( DukEvent[DukEvent.nfy_alert], ( e:DukAlertNotification ) => {
             this.logToClient( e.message, "console" );
         });
-        
+
         this._dukProto.on( DukEvent[DukEvent.nfy_log], ( e:DukLogNotification ) => {
             this.logToClient( e.message, "stdout" );
         });
-        
+
         // Throw
         this._dukProto.on( DukEvent[DukEvent.nfy_throw], ( e:DukThrowNotification ) => {
             this._expectingBreak = "Exception";
@@ -527,11 +527,14 @@ export class DukDebugSession extends DebugSession
         this._dukProto.on( DukEvent[DukEvent.nfy_appmsg], ( e:DukAppNotification ) => {
             this.logToClient( e.messages.join(' ') + '\n' );
         });
+
+        // Connect after callbacks have been attached to finish initialisation
+        this._dukProto.connect(conn, buf);
     }
 
     //-----------------------------------------------------------
     // Begin initialization. Attempt to connect to target
-    //----------------------------------------------------------- 
+    //-----------------------------------------------------------
     private beginInit( response:DebugProtocol.Response ) : void
     {
         this._initialStatus = null;
@@ -562,7 +565,7 @@ export class DukDebugSession extends DebugSession
                 else
                 {
                     conn.closeSocket();
-                    this.sendErrorResponse( response, 0, 
+                    this.sendErrorResponse( response, 0,
                         `Unsupported duktape version: ${version.dukVersion}` );
                 }
             });
@@ -575,7 +578,7 @@ export class DukDebugSession extends DebugSession
             this.sendErrorResponse( response, 0, "Failed to perform attach with error: " + err );
         }
     }
-    
+
     //-----------------------------------------------------------
     // Finalize initialization, sned initialized event
     //-----------------------------------------------------------
@@ -585,7 +588,7 @@ export class DukDebugSession extends DebugSession
 
         if( this._args.sourceMaps )
             this._sourceMaps = new SourceMaps( this._outDir );
-        
+
         this._dbgState.reset();
         this._initResponse          = null;
 
@@ -598,7 +601,7 @@ export class DukDebugSession extends DebugSession
         // case of a broken connection are cleared
         this.removeAllTargetBreakpoints().catch( () => {} )
         .then( () => {
-            
+
             // Set initial paused state depending on the user configuration
             // and any status messages we may have already received from the server
             if( this._args.stopOnEntry )
@@ -614,7 +617,7 @@ export class DukDebugSession extends DebugSession
                 this._dukProto.requestResume();
             }
         }).catch( () => {} );
-        
+
         // Let the front end know we're done initializing
         this.sendResponse( response );
         this.sendEvent( new InitializedEvent() );
@@ -672,7 +675,7 @@ export class DukDebugSession extends DebugSession
     protected initializeRequest( response: DebugProtocol.InitializeResponse, args: DebugProtocol.InitializeRequestArguments ): void
     {
         this.dbgLog( "[FE] initializeRequest." );
-        
+
         // This debug adapter implements the configurationDoneRequest.
         response.body.supportsConfigurationDoneRequest = true;
         response.body.supportsFunctionBreakpoints      = false;
@@ -681,7 +684,7 @@ export class DukDebugSession extends DebugSession
 
         this.sendResponse( response );
     }
-    
+
     //-----------------------------------------------------------
     protected launchRequest( response: DebugProtocol.LaunchResponse, args: DebugProtocol.LaunchRequestArguments ) : void
     {
@@ -689,19 +692,19 @@ export class DukDebugSession extends DebugSession
         this.dbgLog( "[FE] launchRequest" );
         this.sendErrorResponse( response, 0, "Launching is not currently supported. Use Attach.");
     }
-    
+
     //-----------------------------------------------------------
     protected attachRequest( response: DebugProtocol.AttachResponse, args: AttachRequestArguments ) : void
     {
         this.dbgLog( "[FE] attachRequest" );
-        
+
         if( !args.localRoot || args.localRoot === "" )
         {
             this.sendErrorResponse( response, 0,
                 "Must specify a localRoot`" );
             return;
         }
-        
+
         if( args.sourceMaps && (!args.outDir || args.outDir === "") )
         {
             this.sendErrorResponse( response, 0,
@@ -717,14 +720,14 @@ export class DukDebugSession extends DebugSession
 
         this.beginInit( response );
     }
-    
+
     //-----------------------------------------------------------
     protected disconnectRequest( response: DebugProtocol.DisconnectResponse, args: DebugProtocol.DisconnectArguments ) : void
     {
         this.dbgLog( "[FE] disconnectRequest" );
-        
+
         this._isDisconnecting = true;
-        
+
         if( !this._dukProto.isConnected )
         {
             // Already disconencted
@@ -733,7 +736,7 @@ export class DukDebugSession extends DebugSession
         }
 
         const TIMEOUT_MS:number = 2000;
-        
+
         var doDisconnect = () => {
 
             clearTimeout( timeoutID );
@@ -741,14 +744,14 @@ export class DukDebugSession extends DebugSession
 
             this.sendResponse( response );
         };
-        
+
         var timeoutID:NodeJS.Timer = setTimeout( () =>{
-            
+
             this.dbgLog( "Detach request took too long. Forcefully disconnecting." );
             doDisconnect();
-            
+
         }, TIMEOUT_MS );
-               
+
         // Clear all breakpoints & disconnect
         this._breakpoints._breakpoints = [];
 
@@ -756,23 +759,23 @@ export class DukDebugSession extends DebugSession
         this.removeAllTargetBreakpoints()
         .catch( () => {} )
         .then( () => {
-            
+
             // At this point the remote socket may have been closed.
             var isConnected = this._dukProto.isConnected;
 
             ( ( isConnected && this._dukProto.requestDetach()) || Promise.resolve() )
             .catch( () => {} )
-            .then( () => doDisconnect() );  // This will be redundant if the detach 
+            .then( () => doDisconnect() );  // This will be redundant if the detach
                                             // response was received succesfully.
         })
         .catch( () => {} );
     }
-    
+
     //-----------------------------------------------------------
     protected setBreakPointsRequest( response: DebugProtocol.SetBreakpointsResponse, args: DebugProtocol.SetBreakpointsArguments ) : void
     {
         this.dbgLog( "[FE] setBreakPointsRequest" );
-        
+
         let filePath = Path.normalize( args.source.path );
 
         let inBreaks:DebugProtocol.SourceBreakpoint[]  = args.breakpoints;  // Breakpoints the file currently has set
@@ -821,7 +824,7 @@ export class DukDebugSession extends DebugSession
             {
                 let log:string = "Unknown source file: " + filePath;
                 this.dbgLog( log );
-                this.sendErrorResponse( response, 0, "SetBreakPoint failed" ); 
+                this.sendErrorResponse( response, 0, "SetBreakPoint failed" );
                 return Promise.reject( log );
             }
 
@@ -862,7 +865,7 @@ export class DukDebugSession extends DebugSession
         {
             if( i >= addBPs.length )
                 return Promise.resolve();
-            
+
             let bp           :DukBreakPoint = addBPs[i];
             let line         :number        = bp.line;
             let generatedName:string        = null;
@@ -920,42 +923,42 @@ export class DukDebugSession extends DebugSession
             this.sendResponse( response );
         });
     }
-    
+
     //-----------------------------------------------------------
     protected setFunctionBreakPointsRequest( response: DebugProtocol.SetFunctionBreakpointsResponse, args: DebugProtocol.SetFunctionBreakpointsArguments ): void
     {
         this.dbgLog( "[FE] setFunctionBreakPointsRequest" );
         this.sendResponse( response );
     }
-    
+
     //-----------------------------------------------------------
     protected setExceptionBreakPointsRequest( response: DebugProtocol.SetExceptionBreakpointsResponse, args: DebugProtocol.SetExceptionBreakpointsArguments ): void
     {
         this.dbgLog( "[FE] setExceptionBreakPointsRequest" );
         this.sendResponse( response );
     }
-    
+
     //-----------------------------------------------------------
     protected configurationDoneRequest( response: DebugProtocol.ConfigurationDoneResponse, args: DebugProtocol.ConfigurationDoneArguments ): void
     {
         this.dbgLog( "[FE] configurationDoneRequest" );
         this.sendResponse( response );
     }
-    
+
     //-----------------------------------------------------------
     protected continueRequest( response: DebugProtocol.ContinueResponse, args: DebugProtocol.ContinueArguments ): void
     {
         this.dbgLog( "[FE] continueRequest" );
-        
+
         if( this._dbgState.paused )
         {
             this._dukProto.requestResume().then( ( val ) => {
-                
+
                 // A status notification should follow shortly
                 //this.sendResponse( response );
-                
+
             }).catch( (err) => {
-                
+
                 this.requestFailedResponse( response );
             });
             this.sendResponse( response );
@@ -967,75 +970,75 @@ export class DukDebugSession extends DebugSession
             return;
         }
     }
-    
+
     //-----------------------------------------------------------
     // StepOver
     protected nextRequest( response: DebugProtocol.NextResponse, args: DebugProtocol.NextArguments ): void
     {
         this.dbgLog( "[FE] nextRequest" );
-        
+
         if( !this._dbgState.paused )
         {
             this.dbgLog( "Can't step over when not paused" );
             this.requestFailedResponse( response, "Not paused." );
             return;
         }
-        
+
         this._expectingBreak = "step";
         this._dukProto.requestStepOver().then( ( val ) => {
             // A status notification should follow shortly
             //this.sendResponse( response );
-            
+
         }).catch( (err) => {
             //this.requestFailedResponse( response );
         });
 
         this.sendResponse( response );
     }
-    
+
     //-----------------------------------------------------------
     // StepInto
     protected stepInRequest (response: DebugProtocol.StepInResponse, args: DebugProtocol.StepInArguments ): void
     {
         this.dbgLog( "[FE] stepInRequest" );
-        
+
         if( !this._dbgState.paused )
         {
             this.dbgLog( "Can't step into when not paused" );
             this.requestFailedResponse( response, "Not paused." );
             return;
         }
-        
+
         this._expectingBreak = "stepin";
         this._dukProto.requestStepInto().then( ( val ) => {
             // A status notification should follow shortly
             //this.sendResponse( response );
-            
+
         }).catch( (err) => {
             //this.requestFailedResponse( response );
         });
 
         this.sendResponse( response );
     }
-    
+
     //-----------------------------------------------------------
     // StepOut
     protected stepOutRequest(response: DebugProtocol.StepOutResponse, args: DebugProtocol.StepOutArguments): void
     {
         this.dbgLog( "[FE] stepOutRequest" );
-        
+
         if( !this._dbgState.paused )
         {
             this.dbgLog( "Can't step out when not paused" );
             this.requestFailedResponse( response, "Not paused." );
             return;
         }
-        
+
         this._expectingBreak = "stepout";
         this._dukProto.requestStepOut().then( ( val ) => {
             // A status notification should follow shortly
             //this.sendResponse( response );
-            
+
         }).catch( (err) => {
             //this.requestFailedResponse( response );
         });
@@ -1046,20 +1049,20 @@ export class DukDebugSession extends DebugSession
         // state when it responds with status messages.
         this.sendResponse( response );
     }
-    
+
     //-----------------------------------------------------------
     protected pauseRequest( response: DebugProtocol.PauseResponse, args: DebugProtocol.PauseArguments ): void
     {
         this.dbgLog( "[FE] pauseRequest" );
-        
+
         if( !this._dbgState.paused )
         {
             this._expectingBreak = "pause";
             this._dukProto.requestPause().then( ( val ) => {
-                
+
                 // A status notification should follow shortly
                 //this.sendResponse( response );
-                
+
             }).catch( (err) => {
                 //this.requestFailedResponse( response, "Error pausing." );
             });
@@ -1072,106 +1075,106 @@ export class DukDebugSession extends DebugSession
             this.requestFailedResponse( response, "Already paused." );
         }
     }
-    
+
     //-----------------------------------------------------------
     protected sourceRequest( response: DebugProtocol.SourceResponse, args: DebugProtocol.SourceArguments ): void
     {
         this.dbgLog( "[FE] sourceRequest" );
-        
+
         let ref = args.sourceReference;
-        
+
         response.body = { content: "Unknown Source\n" };
-        
+
         this.sendResponse( response );
     }
-    
+
     //-----------------------------------------------------------
     protected threadsRequest( response: DebugProtocol.ThreadsResponse ): void
     {
         this.dbgLog( "[FE] threadsRequest" );
-        
+
         response.body = {
             threads:  [ new Thread( DukDebugSession.THREAD_ID, "Main Thread") ]
         };
-            
+
         this.sendResponse( response );
     }
-    
+
     //-----------------------------------------------------------
     protected stackTraceRequest( response: DebugProtocol.StackTraceResponse, args: DebugProtocol.StackTraceArguments ): void
     {
         this.dbgLog( "[FE] stackTraceRequest" );
-        
+
         // Make sure we're paused
         if( !this._dbgState.paused )
         {
-            this.requestFailedResponse( response, 
+            this.requestFailedResponse( response,
                 "Attempted to obtain stack trace while running." );
             return;
         }
-        
+
         var getCallStack;
         var dukframes  = new Array<DukStackFrame>();
-        
+
         var doRespond = () => {
-            
+
             // Publish Stack Frames
             let frames = [];
             frames.length = dukframes.length;
-            
+
             for( let i = 0, len=frames.length; i < len; i++ )
             {
                 let frame = dukframes[i];
-                
+
                 // Find source file
                 let srcFile:SourceFile = frame.source;
                 let src    :Source     = null;
 
                 if( srcFile )
                     src = new Source( frame.fileName, frame.filePath, 0 );
-                
+
                 let klsName  = frame.klass    == "" ? "" : frame.klass + ".";
                 let funcName = frame.funcName == "" ? "(anonymous function)" : frame.funcName + "()";
-                
+
                 //i: number, nm: string, src: Source, ln: number, col: number
                 frames[i] = new StackFrame( frame.handle,
                                 klsName + funcName + " : " + frame.pc,
                                 src, frame.lineNumber, frame.pc );
             }
-            
+
             response.body = { stackFrames: frames };
             this.sendResponse( response );
         };
-        
+
         var doApplyConstructors = ( index:number ) => {
-          
+
             if( index >= dukframes.length )
             {
                 // Finalize response
                 doRespond();
                 return;
             }
-          
+
             this.getObjectConstructorByName( "this", dukframes[index].depth )
             .then( ( c:string ) => {
                 dukframes[index].klass = c;
                 doApplyConstructors( index+1 );
             });
-          
+
         };
-        
+
         // Grab callstack from duktape
         this._dukProto.requestCallStack().then( ( val:DukGetCallStackResponse ) => {
-           
+
             dukframes.length = val.callStack.length;
-            
+
             for( let i = 0, len=dukframes.length; i < len; i++ )
             {
                 let entry = val.callStack[i];
-                
+
                 let srcFile:SourceFile = this.mapSourceFile( entry.fileName );
                 let line   :number     = this.convertDebuggerLineToClient( entry.lineNumber );
-                
+
                 // Get correct info to display
                 let srcPos:SourceFilePosition = srcFile ?
                     srcFile.generated2Source( line ) :
@@ -1180,30 +1183,30 @@ export class DukDebugSession extends DebugSession
                         fileName : entry.fileName,
                         line     : line
                     };
-                                 
+
                 // Save stack frame to the state
                 let frame = new DukStackFrame( srcFile, srcPos.fileName, srcPos.path,
                                                entry.funcName, srcPos.line, entry.pc,
                                                -i-1, null );
-                
+
                 frame.handle = this._dbgState.stackFrames.create( frame );
                 dukframes[i] = frame;
             }
-            
+
             // Apply constructors to functions
             doApplyConstructors( 0 );
-        
+
         }).catch( ( err ) => {
             this.dbgLog( "Stack trace failed: " + err );
-            
+
             response.body = { stackFrames: [] };
             this.sendResponse( response );
             //this.requestFailedResponse( response, "StackTraceRequest failed." );
         });
-        
-        
+
+
     }
-    
+
     //-----------------------------------------------------------
     protected scopesRequest( response: DebugProtocol.ScopesResponse, args: DebugProtocol.ScopesArguments ):void
     {
@@ -1215,26 +1218,26 @@ export class DukDebugSession extends DebugSession
         else
             this.scopeRequestForMultiple( args.frameId, response, args );
     }
-    
+
     //-----------------------------------------------------------
     protected variablesRequest( response:DebugProtocol.VariablesResponse, args:DebugProtocol.VariablesArguments ):void
     {
         this.dbgLog( "[FE] variablesRequest" );
         assert( args.variablesReference != 0 );
-        
+
         var properties = this._dbgState.varHandles.get( args.variablesReference );
-        
+
         if( !properties )
         {
             // If a stop event happened, we may have cleared the state.
             response.body = { variables: [] };
             this.sendResponse( response );
             return;
-            
+
             // TODO: Perhaps handle only one request from the front end at a time,
             // and perhaps cancel any pending if the state changed/cleared
         }
-        
+
         var scope      = properties.scope;
         var stackFrame = scope.stackFrame;
 
@@ -1275,7 +1278,7 @@ export class DukDebugSession extends DebugSession
             response.body = { variables: vars };
             this.sendResponse( response );
         };
-        
+
         // Determine the PropertySet's reference type
         if( properties.type == PropertySetType.Scope )
         {
@@ -1291,12 +1294,12 @@ export class DukDebugSession extends DebugSession
             });
         }
     }
-    
+
     //-----------------------------------------------------------
     protected evaluateRequest( response:DebugProtocol.EvaluateResponse, args:DebugProtocol.EvaluateArguments ):void
     {
         this.dbgLog( "[FE] evaluateRequest" );
-        
+
         let x = args.expression;
         if( x.indexOf( "cmd:") == 0 )
         {
@@ -1310,7 +1313,7 @@ export class DukDebugSession extends DebugSession
                 this.requestFailedResponse( response, "Failed to find stack frame: " + args.frameId );
                 return;
             }
-            
+
             if( !args.expression || args.expression.length < 1 )
             {
                 this.requestFailedResponse( response, "Invalid expression" );
@@ -1321,33 +1324,33 @@ export class DukDebugSession extends DebugSession
 
             this._dukProto.requestEval( args.expression, frame.depth )
                 .then( resp => {
-                    
+
                     let r = <DukEvalResponse>resp;
                     if( !r.success )
                     {
-                        this.requestFailedResponse( response, "Eval failed: " + r.result );    
+                        this.requestFailedResponse( response, "Eval failed: " + r.result );
                         return;
                     }
                     else
                     {
                         this.resolveObject(args.expression, r.result, frame.scopes[0]).then(
-                            (v) => 
+                            (v) =>
                         {
                             response.body = {
                                 result: v.value,
                                 variablesReference: v.variablesReference
                             };
-                            this.sendResponse( response );    
+                            this.sendResponse( response );
                         })
                     }
-                    
+
                 }).catch( err =>{
                     this.requestFailedResponse( response, "Eval request failed: " + err );
                 });
-                
+
             return;
         }
-        
+
     }
 
 /// Private
@@ -1361,7 +1364,7 @@ export class DukDebugSession extends DebugSession
         let dukScope    = new DukScope( "Local", stackFrame, null );
         dukScope.handle = this._dbgState.scopes.create( dukScope );
         stackFrame.scopes = [ dukScope ];
-        
+
         var scopes:Scope[] = [];
 
         this._dukProto.requestLocalVariables( stackFrame.depth )
@@ -1373,7 +1376,7 @@ export class DukDebugSession extends DebugSession
             // Append 'this' to local scope, if it's not global
             return this.isGlobalObjectByName( "this", stackFrame.depth )
             .then( (isGlobal:boolean ) => {
-                
+
                 if( !isGlobal )
                     keys.unshift( "this" );
 
@@ -1382,7 +1385,7 @@ export class DukDebugSession extends DebugSession
                     scopes.push( new Scope( props.scope.name, props.handle, false ) );
                 });
             });
-            
+
         })
         .then( () =>{
             response.body = { scopes: scopes };
@@ -1400,53 +1403,53 @@ export class DukDebugSession extends DebugSession
     private scopeRequestForMultiple( stackFrameHdl:number, response:DebugProtocol.ScopesResponse, args:DebugProtocol.ScopesArguments ):void
     {
         let stackFrame = this._dbgState.stackFrames.get( stackFrameHdl );
-        
+
         // Prepare DukScope objects
         const names     = [ "Local", "Closure", "Global" ];
         let   dukScopes = new Array<DukScope>( names.length );
-        
+
         for( let i=0; i < names.length; i++ )
         {
             let scope    = new DukScope( names[i], stackFrame, null );
             scope.handle = this._dbgState.scopes.create( scope );
-            
+
             dukScopes[i] = scope;
         }
         stackFrame.scopes = dukScopes;
-        
+
         // Ask Duktape for the scope property keys for this stack frame
         var scopes:Scope[] = [];
-        
+
         this._dukProto.requestClosures( this._scopeMask, stackFrame.depth )
         .then( ( r:DukGetClosureResponse ) => {
-        
+
             let keys = [ r.local, r.closure, r.global ];
             let propPromises:Promise<PropertySet>[] = [];
-            
+
             // Append 'this' to local scope, if it's not global
             return this.isGlobalObjectByName( "this", stackFrame.depth )
             .then( (isGlobal:boolean ) => {
-                
+
                 if( !isGlobal )
                     r.local.unshift( "this" );
-                    
+
                 // Create a PropertySet from each scope
                 for( let i=0; i < names.length; i++ )
                 {
                     if( keys[i].length == 0 )
                         continue;
-                    
+
                     propPromises.push( this.expandScopeProperties( keys[i], dukScopes[i] ) );
                 }
-                
+
                 if( propPromises.length > 0 )
                 {
                     return Promise.all( propPromises )
                     .then( (results:PropertySet[]) => {
-                        
+
                         for( let i=0; i < results.length; i++ )
-                            scopes.push( new Scope( results[i].scope.name, 
-                                         results[i].handle, 
+                            scopes.push( new Scope( results[i].scope.name,
+                                         results[i].handle,
                                          results[i].scope.name == "Global" )
                             );
                     });
@@ -1458,7 +1461,7 @@ export class DukDebugSession extends DebugSession
             this.sendResponse( response );
         })
         .catch( err => {
-            
+
             this.dbgLog( "scopesRequest failed: " + err );
             response.body = { scopes: [] };
             this.sendResponse( response );
@@ -1466,7 +1469,7 @@ export class DukDebugSession extends DebugSession
     }
 
     //-----------------------------------------------------------
-    // Parse command-line command 
+    // Parse command-line command
     //-----------------------------------------------------------
     private handleCommandLine( response:DebugProtocol.EvaluateResponse, feArgs:DebugProtocol.EvaluateArguments ):void
     {
@@ -1475,7 +1478,7 @@ export class DukDebugSession extends DebugSession
         let args:string[];
         let cmd:string;
         let result:string = "";
-        
+
         let requireArg = ( i:number ) => {
             if( i < 0 )
                 i = args.length-i;
@@ -1516,23 +1519,23 @@ export class DukDebugSession extends DebugSession
                 default :
                     this.requestFailedResponse( response, "Unknown command: " + cmd );
                 return;
-                
+
                 case "breakpoints" :
                 {
                     this._dukProto.requestListBreakpoints()
                         .then( resp => {
-                            
+
                             let r = <DukListBreakResponse>resp;
                             this.dbgLog( "Breakpoints: " + r.breakpoints.length );
                             for( let i = 0; i < r.breakpoints.length; i++ )
                             {
                                 let bp   = r.breakpoints[i];
                                 let line = ( "[" + i + "] " + bp.fileName + ": " + bp.line );
-                                
-                                this.dbgLog( line );  
+
+                                this.dbgLog( line );
                                 result += ( line + "\n" );
                             }
-                            
+
                         }).catch( err => {
                             this.requestFailedResponse( response, "Failed: " + err );
                         });
@@ -1550,16 +1553,16 @@ export class DukDebugSession extends DebugSession
             }
         }
         catch( err ) {
-            
+
             this.requestFailedResponse( response, `Cmd Failed: ${String(err)}` );
             return;
         }
-        
+
         response.body = {
             result: result,
             variablesReference: 0
         };
-        
+
         this.sendResponse( response );
     }
 
@@ -1572,29 +1575,29 @@ export class DukDebugSession extends DebugSession
 
         return this._dukProto.requestListBreakpoints()
             .then( (r:DukListBreakResponse) => {
-                                
+
                 numBreakpoints = r.breakpoints.length;
-                
+
                 if( numBreakpoints < 1 )
                     return Promise.resolve([]);
-                
+
                 var promises = new Array<Promise<any>>();
                 promises.length = numBreakpoints;
-                
+
                 numBreakpoints --; // Make it zero based
-                
+
                 // Duktape's breakpoints are tightly packed and index based,
                 // so just remove them each from the top down
                 for( let i=numBreakpoints; i >= 0; i-- )
                     promises[i] = this._dukProto.requestRemoveBreakpoint( numBreakpoints-- );
-                    
+
                 return Promise.all( promises );
             });
     }
-    
+
     //-----------------------------------------------------------
-    // Obtains all variables for the specificed scope. 
-    // It creates a PropertySet for that scope and 
+    // Obtains all variables for the specificed scope.
+    // It creates a PropertySet for that scope and
     // resolves pointers to object types in that scope.
     // It returns a PropertySet with the variables array resolved and
     // ready to be sent to the front end.
@@ -1605,45 +1608,45 @@ export class DukDebugSession extends DebugSession
         propSet.handle    = this._dbgState.varHandles.create( propSet );
         propSet.scope     = scope;
         propSet.variables = [];
-        
+
         scope.properties = propSet;
-        
+
         // Eval all the keys to get the values
         let evalPromises = new Array<Promise<any>>( keys.length );
-        
+
         for( let i=0; i < keys.length; i++ )
-            evalPromises[i] = this._dukProto.requestEval( keys[i], scope.stackFrame.depth ); 
-        
+            evalPromises[i] = this._dukProto.requestEval( keys[i], scope.stackFrame.depth );
+
         return Promise.all( evalPromises )
         .then( (results:DukEvalResponse[]) => {
-         
+
             let ctorPromises:Promise<string>[] = [];    // If we find objects values, get their constructors.
             let objVars     :Variable[]        = [];    // Save object vars separate to set the value
                                                         //  when the constructor promise returns
-                                                        
+
             // Split into key value pairs, filtering out failed evals
             let pKeys  :string[]          = [];
             let pValues:Duk.DValueUnion[] = [];
-            
+
             for( let i = 0; i < results.length; i++ )
             {
                 if( !results[i].success )
                     continue;
-             
+
                 pKeys.push( keys[i] );
                 pValues.push( results[i].result );
             }
-            
+
             if( pKeys.length < 1 )
                 return propSet;
-            
+
             return this.resolvePropertySetVariables( pKeys, pValues, propSet );
         })
         .catch( err => {
             return propSet;
         });
     }
-    
+
     //-----------------------------------------------------------
     // Takes a PropertySet that is part of parent object and
     // expands its properties into DebugAdapter Variables2
@@ -1656,24 +1659,24 @@ export class DukDebugSession extends DebugSession
             // ( if the variables property is not undefined, it's been expanded )
             if( propSet.variables )
                 return Promise.resolve( propSet.variables );
-            
+
             propSet.variables = [];
-            
+
             // Inspect the object, this will yield a set of 'artificial properties'
             // which we can use to query the object's 'own' properties
             return this._dukProto.requestInspectHeapObj( propSet.heapPtr )
             .then( ( r:DukGetHeapObjInfoResponse ) => {
-                
+
                 let numArtificial = r.properties.length;
                 let props         = r.properties;
-                
+
                 if (this._args.artificial)
                 {
                     // Create a property set for the artificials properties
                     let artificials         = new PropertySet( PropertySetType.Artificials );
                     artificials.handle      = this._dbgState.varHandles.create( artificials );
                     artificials.scope       = propSet.scope;
-                    
+
                     // Convert artificials to debugger Variable objets
                     artificials.variables = new Array<Variable>( numArtificial );
                     for( let i=0; i < numArtificial; i++ )
@@ -1681,7 +1684,7 @@ export class DukDebugSession extends DebugSession
                         let p = r.properties[i];
                         artificials.variables[i] = new Variable( <string>p.key, String(p.value), 0 );
                     }
-                    
+
                     // Add artificials node to the property set
                     propSet.variables.push( new Variable( "__artificial", "{...}", artificials.handle ) );
                 }
@@ -1693,7 +1696,7 @@ export class DukDebugSession extends DebugSession
 
                 return this._dukProto.requestGetObjPropDescRange( propSet.heapPtr, 0, maxOwnProps )
                 .then( ( r:DukGetObjPropDescRangeResponse ) => {
-                    
+
                     // Get rid of undefined ones.
                     // ( The array part may return undefined indices )
                     let props:Duk.Property[] = [];
@@ -1718,7 +1721,7 @@ export class DukDebugSession extends DebugSession
         {
             return Promise.resolve( propSet.variables );
         }
-        
+
         return Promise.resolve( [] );
     }
 
@@ -1729,7 +1732,7 @@ export class DukDebugSession extends DebugSession
             // Check if this object's pointer has already been cached
             let ptrStr     = ((<Duk.TValObject>value).ptr).toString();
             let objPropSet = this._dbgState.ptrHandles[ptrStr];
-            
+
             if( objPropSet )
             {
                 return Promise.resolve(new Variable(name, objPropSet.displayName, objPropSet.handle));
@@ -1737,7 +1740,7 @@ export class DukDebugSession extends DebugSession
             else
             {
                 return new Promise<Variable>(
-                    (resolve, reject) => 
+                    (resolve, reject) =>
                 {
                     // This object's properties have not been resolved yet,
                     // resolve it for the first time
@@ -1746,15 +1749,15 @@ export class DukDebugSession extends DebugSession
                     objPropSet.heapPtr     = (<Duk.TValObject>value).ptr;
                     objPropSet.classType   = (<Duk.TValObject>value).classID;
                     objPropSet.displayName = "Object";
-                    
+
                     objPropSet.handle           = this._dbgState.varHandles.create( objPropSet );
 
                     let variable = new Variable(name, objPropSet.displayName, objPropSet.handle);
-                    
+
                     // Register with the pointer map
                     this._dbgState.ptrHandles[ptrStr] = objPropSet;
 
-                    // Try to obtain standard built-in object's dispaly name 
+                    // Try to obtain standard built-in object's dispaly name
                     // by querying the 'class_name' artificial property.
                     this._dukProto.requestInspectHeapObj( objPropSet.heapPtr )
                     .then( (r:DukGetHeapObjInfoResponse) => {
@@ -1763,7 +1766,7 @@ export class DukDebugSession extends DebugSession
 
                         if( !clsName || clsName.value === <any>"Object" )
                         {
-                            // For plain 'Object' types, we want to try to 
+                            // For plain 'Object' types, we want to try to
                             // obtain its constructor's name.
                             this.getConstructorNameByObject( objPropSet.heapPtr ).then(
                                 (className) =>
@@ -1783,21 +1786,21 @@ export class DukDebugSession extends DebugSession
 
                 });
             }
-        
+
         }
         else
         {
             // Non-expandable value
-            return Promise.resolve(new Variable(name, 
+            return Promise.resolve(new Variable(name,
                 typeof value === "string" ? `"${value}"` : String( value )));
         }
     }
-    
+
     //-----------------------------------------------------------
-    // Takes in a set of keys and dvalues that belong to 
+    // Takes in a set of keys and dvalues that belong to
     // a specified PropertySet and resolves their values
     // into 'Varaible' objects to be returned to the front end.
-    //----------------------------------------------------------- 
+    //-----------------------------------------------------------
     private resolvePropertySetVariables( keys:string[], values:Duk.DValueUnion[], propSet:PropertySet ) : Promise<PropertySet>
     {
         let scope     :DukScope = propSet.scope;
@@ -1809,32 +1812,32 @@ export class DukDebugSession extends DebugSession
                                                     //  when the toString promises return
         if( !propSet.variables )
             propSet.variables = [];
-        
+
         // Get all the variables ready
         for( let i = 0; i < keys.length; i++ )
         {
             let key   = keys[i];
             let value = values[i];
-            
+
             let variable = new Variable( key, "", 0 );
             propSet.variables.push( variable );
-            
+
             // If it's an object, create a sub property set
             if( value instanceof Duk.TValObject )
             {
                 // Check if this object's pointer has already been cached
                 let ptrStr     = ((<Duk.TValObject>value).ptr).toString();
                 let objPropSet = this._dbgState.ptrHandles[ptrStr];
-                
+
                 if( objPropSet )
                 {
                     // Object already exists, refer to prop set handle
                     variable.variablesReference = objPropSet.handle;
-                    
-                    // NOTE: Existing prop sets might register themselves to 
-                    // get the display name as well if the existing object 
+
+                    // NOTE: Existing prop sets might register themselves to
+                    // get the display name as well if the existing object
                     // was registered on this very call
-                    // (that existing variable is in the same object level as this one), 
+                    // (that existing variable is in the same object level as this one),
                     // then it's 'displayName' field currently points to undefined.
                     if( objPropSet.displayName )
                     {
@@ -1852,14 +1855,14 @@ export class DukDebugSession extends DebugSession
                     objPropSet.classType   = (<Duk.TValObject>value).classID;
                     objPropSet.displayName = "Object";
                     variable.value = objPropSet.displayName;
-                    
+
                     objPropSet.handle           = this._dbgState.varHandles.create( objPropSet );
                     variable.variablesReference = objPropSet.handle;
-                    
+
                     // Register with the pointer map
                     this._dbgState.ptrHandles[ptrStr] = objPropSet;
 
-                    // Try to obtain standard built-in object's dispaly name 
+                    // Try to obtain standard built-in object's dispaly name
                     // by querying the 'class_name' artificial property.
                     var objPromise = this._dukProto.requestInspectHeapObj( objPropSet.heapPtr )
                     .then( (r:DukGetHeapObjInfoResponse) => {
@@ -1868,7 +1871,7 @@ export class DukDebugSession extends DebugSession
 
                         if( !clsName || clsName.value === <any>"Object" )
                         {
-                            // For plain 'Object' types, we want to try to 
+                            // For plain 'Object' types, we want to try to
                             // obtain its constructor's name.
                             toStrPromises.push( this.getConstructorNameByObject( objPropSet.heapPtr ) );
                             objVars.push( variable );
@@ -1882,14 +1885,14 @@ export class DukDebugSession extends DebugSession
 
                     objClassPromises.push( objPromise );
                 }
-                
+
                 // Eval Object.toString()
                 //let expr = `${key}.toString()`;
                 //toStrPromises.push( this._dukProto.requestEval( expr, stackDepth ) );
                 // NOTE: We are not doing toString anymore, for the time
                 // being we just get the constructor name. This is because
                 // there's no way to call 'toString' by object/ptr value. Only
-                // by property lookup + eval. We can do that, as we did in the 
+                // by property lookup + eval. We can do that, as we did in the
                 // first implementation, but it would be pretty slow for long property
                 // chains (deeply nested objects). Maybe we'll do so later, but for now
                 // the constructor name is enough.
@@ -1907,7 +1910,7 @@ export class DukDebugSession extends DebugSession
             // Set the object var's display value to the 'toString' result
             return Promise.all( toStrPromises )
             .then( (toStrResults:string[]) => {
-                
+
                 // For objects whose 'toString' resolved to '[object Object]'
                 // we attempt to get a more suitable name by callng it's
                 // constructor.name property to see if it yields anything useful
@@ -1919,7 +1922,7 @@ export class DukDebugSession extends DebugSession
                     let rName:string = toStrResults[i];
                     /*
                     //let r = toStrResults[i];
-                    
+
                     rName = r.success ? String(r.result) : "Object";
 
                     if( rName.indexOf("[object") >= 0 )
@@ -1958,8 +1961,8 @@ export class DukDebugSession extends DebugSession
                         return Promise.resolve( propSet );
                     });
                 }
-                
-                return Promise.resolve( propSet ); 
+
+                return Promise.resolve( propSet );
             });
         })
         .catch( () => {} )
@@ -1967,31 +1970,31 @@ export class DukDebugSession extends DebugSession
             return Promise.resolve( propSet );
          });
     }
-    
+
     //-----------------------------------------------------------
     // Returns the object constructor. If it's the global object,
-    // or an error occurrs, then it return an empty string. 
+    // or an error occurrs, then it return an empty string.
     //-----------------------------------------------------------
     private getObjectConstructorByName( prefix:string, stackDepth:number ) : Promise<any>
     {
         let exp = "(" + prefix + '.constructor.toString().match(/\\w+/g)[1])';
-        
+
         return this.isGlobalObjectByName( prefix, stackDepth )
         .then( isGlobal => {
-            
+
             if( isGlobal )
                 return  "";
-            
+
             // Not global object, try to get the constructor name
             return this._dukProto.requestEval( exp, stackDepth )
             .then( resp => {
                 let r = <DukEvalResponse>resp;
                 return r.success ? String(r.result) : "";
             });
-            
+
         }).catch( err => "" );
     }
-    
+
     //-----------------------------------------------------------
     // Get constructor name by object ref
     //-----------------------------------------------------------
@@ -2009,7 +2012,7 @@ export class DukDebugSession extends DebugSession
 
             let p:Duk.Property = ArrayX.firstOrNull( r.properties, n => n.key === "prototype" );
             protoPtr = (<Duk.TValObject>p.value).ptr;
-            
+
             return this._dukProto.requestInspectHeapObj( protoPtr );
         })
         .then( (r:DukGetHeapObjInfoResponse) => {
@@ -2042,11 +2045,11 @@ export class DukDebugSession extends DebugSession
     private isGlobalObjectByName( prefix:string, stackDepth:number ) : Promise<any>
     {
         let exp = "String(" + prefix + ")";
-        
+
         return this._dukProto.requestEval( exp, stackDepth )
         .then(
              (resp) => {
-                
+
                 let r = <DukEvalResponse>resp;
                 if( !r.success )
                     return Promise.reject( "failed" );
@@ -2054,9 +2057,9 @@ export class DukDebugSession extends DebugSession
                 {
                     let isglob = <string>r.result === "[object global]" ? true : false;
                     return Promise.resolve( isglob );
-                } 
+                }
             },
-            
+
             ( err ) => { Promise.reject( err ) }
         );
     }
@@ -2066,20 +2069,20 @@ export class DukDebugSession extends DebugSession
     {
         if( !name )
             return null;
-        
+
         name = this.normPath( name );
-        
+
         let sources = this._sources;
-        
+
         // Attempt to find it first
         for( let k in sources )
         {
             let val:SourceFile = sources[k];
             if( val.name == name )
-                return val;   
+                return val;
         }
-        
-        let fpath; 
+
+        let fpath;
         if( this._args.sourceMaps )
             fpath = this.normPath( Path.join( this._outDir, name ) );
         else
@@ -2087,17 +2090,17 @@ export class DukDebugSession extends DebugSession
 
         if( !FS.existsSync( fpath ) )
             return null;
-        
+
         let src:SourceFile = new SourceFile();
         src.id   = this._nextSourceID ++;
         src.name = name;
         src.path = fpath;
-        
+
         sources[src.id]   = src;
         sources[src.name] = src;
 
         // Grab the source map, if it has any
-        try { 
+        try {
             this.checkForSourceMap( src );
             if( src.srcMap )
             {
@@ -2107,29 +2110,29 @@ export class DukDebugSession extends DebugSession
                 for( let i = 0; i < srcMap._sources.length; i++ )
                 {
                     let srcPath = srcMap._sources[i];
-                    if( !Path.isAbsolute( srcPath ) ) 
+                    if( !Path.isAbsolute( srcPath ) )
                     {
                         // According to https://sourcemaps.info/spec.html#h.75yo6yoyk7x5 :
                         // if the sources are not absolute URLs after prepending of the “sourceRoot”, the sources are resolved relative to the SourceMap
                         srcPath = Path.resolve(Path.dirname(this.normPath(Path.join(this._outDir, name))), srcPath);
                     }
-                    
+
                     srcPath = Path.normalize( srcPath );
                     this._sourceToGen[srcPath] = src;
                 }
             }
 
         } catch( err ){}
-        
-       
+
+
         return src;
     }
 
     //-----------------------------------------------------------
     // Given the original source file name, this looks for a
     // src-to-gen mapped SourceFile that has that name.
-    // If it doesn't find one, it looks into 
-    // the source maps of all the generated files 
+    // If it doesn't find one, it looks into
+    // the source maps of all the generated files
     // and attempts to find the file in them
     //-----------------------------------------------------------
     private unmapSourceFile( path:string ):SourceFile
@@ -2143,20 +2146,20 @@ export class DukDebugSession extends DebugSession
 
         if( !this._sourceMaps )
             return this.mapSourceFile( Path.join( pathUnderRoot, name ) );
-        
+
         let src2gen = this._sourceToGen;
-        
+
         // Attempt a reverse lookup first
         if( src2gen[path] )
             return src2gen[path];
-        
+
         let src:SourceFile = null;
 
         // If we still haven't found anything,
         // we try to mapa the source files in the outDir until
         // we find the matching one.
         const scanDir = ( dirPath:string, rootPath:string ) => {
-           
+
             // In case the directory doesn't exsist
             var files:string[];
             try { files = FS.readdirSync( dirPath ); }
@@ -2174,12 +2177,12 @@ export class DukDebugSession extends DebugSession
                 var stat = FS.lstatSync( Path.join( dirPath, f ) );
                 if( stat.isDirectory() )        // Ignore dirs, shallow search
                     continue;
-                
+
                 var candidate = this.mapSourceFile( Path.join( rootPath, f ) );
-                if (candidate.name == name)
+                if (candidate.name == Path.join( pathUnderRoot, name ) )
                     return candidate;
                 if (!candidate.srcMap)
-                    return;
+                    continue;
                 for (var candidateFile of candidate.srcMap._sources) {
                     if (candidateFile && Path.resolve(this._outDir, candidateFile) == path)
                         return candidate;
@@ -2187,39 +2190,39 @@ export class DukDebugSession extends DebugSession
             }
         };
 
-        
+
         // Let's construct the folder to scan by combining the path
         // coming in with the out directory. The path coming in may
-        // point to a subfolder under "rootPath" 
+        // point to a subfolder under "rootPath"
         // so this will ensure that we are looking in the right directory
         let outDirToScan = Path.join( this._outDir, pathUnderRoot );
 
         // For transpiled sourcess that have been concatenated into a single file,
         // the output folder here may not exsist, since the output is a single file.
-        // Therefore no such other directory or file mathching the source folder structure 
-        // may exsist in the output directory.  So we first attempt to scan the path matching 
+        // Therefore no such other directory or file mathching the source folder structure
+        // may exsist in the output directory.  So we first attempt to scan the path matching
         // the source root structure, then a flat scan of the outDir.
         return scanDir( outDirToScan, pathUnderRoot ) || scanDir( this._outDir, "" );
     }
-    
+
     //-----------------------------------------------------------
     private checkForSourceMap( src:SourceFile )
     {
         if( !this._args.sourceMaps )
             return;
-        
+
         src.srcMap     = this._sourceMaps.MapPathFromSource( src.path );
         src.srcMapPath = src.srcMap.generatedPath();
     }
-    
+
     //-----------------------------------------------------------
     private getSourceNameByPath( fpath:string ) : string
     {
         fpath = this.normPath( fpath );
-                
+
         if( fpath.indexOf( this._sourceRoot ) != 0 )
             return undefined;
-        
+
         return fpath.substr( this._sourceRoot.length+1 );
     }
 
@@ -2227,12 +2230,12 @@ export class DukDebugSession extends DebugSession
     private requestFailedResponse( response:DebugProtocol.Response, msg?:any ) : void
     {
         msg = msg ? msg.toString() : "";
-        
-        msg = "Request failed: " + msg; 
+
+        msg = "Request failed: " + msg;
         this.dbgLog( "ERROR: " + msg );
         this.sendErrorResponse( response, ErrorCode.RequestFailed, msg );
     }
-    
+
     //-----------------------------------------------------------
     private normPath( fpath:string ) : string
     {
@@ -2243,7 +2246,7 @@ export class DukDebugSession extends DebugSession
         fpath = fpath.replace(/\\/g, '/');
         return fpath;
     }
-    
+
     //-----------------------------------------------------------
     private logToClient( msg:string, category?:string, outputEventOptions?:object ) : void
     {

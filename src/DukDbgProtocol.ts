@@ -808,12 +808,10 @@ export class DukDbgProtocol extends EE.EventEmitter
     private _emmitedDisonnected:boolean = false;
 
     //-----------------------------------------------------------
-    constructor( conn:DukConnection, remainderBuf:Buffer, logger:Function )
+    constructor(logger:Function )
     {
         super();
-
         this.log = ( logger || (() => {}) );
-
         this._inBufSize = 0;
 
         this._outBuf    = new DukMsgBuilder( DukDbgProtocol.OUT_BUF_SIZE );
@@ -822,7 +820,11 @@ export class DukDbgProtocol extends EE.EventEmitter
 
         this._msg        = [];
         this._numDvalues = 0;
-
+    }
+    
+    //-----------------------------------------------------------
+    public connect( conn:DukConnection, remainderBuf:Buffer ): void
+    {   
         this._conn    = conn;
         this._version = conn._protoVersion;
 
@@ -836,10 +838,10 @@ export class DukDbgProtocol extends EE.EventEmitter
 
         this._conn.once( "disconnect", ( reason ) => {
             this.onDisconnected( reason );
-        });
-
-        if( remainderBuf.length > 0 )
-            this.onReceiveData( remainderBuf )
+        }); 
+        
+        if ( remainderBuf.length > 1 )
+            this.onReceiveData(remainderBuf);
     }
 
     //-----------------------------------------------------------
