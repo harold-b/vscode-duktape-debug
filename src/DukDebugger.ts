@@ -1316,16 +1316,38 @@ export class DukDebugSession extends DebugSession
         this.dbgLog( "[FE] setVariableRequest" );
         
         var properties = this._dbgState.varHandles.get( args.variablesReference );
-        var stackFrame = properties.scope.stackFrame;
+        if( !properties )
+        {
+            this.requestFailedResponse( response, "Failed to find variable: " + args.variablesReference );
+            return;
+        }
+        var frame = properties.scope.stackFrame;
         let variableName = this.getVariableName(args.name, properties);
         let expression = variableName + " = " + args.value;
         
-        this._dukProto.requestEval( expression, stackFrame.depth );
-        response.body = {
-            value: args.value
-        };
-        
-        this.sendResponse( response );
+        this._dukProto.requestEval( expression, frame.depth )
+        .then( resp => {       
+            let r = <DukEvalResponse>resp;
+            if( !r.success )
+            {
+                this.requestFailedResponse( response, "Eval failed: " + r.result );    
+                return;
+            }
+            else
+            {
+                this.resolveObject(expression, r.result, frame.scopes[0]).then(
+                    (v) => 
+                {
+                    response.body = {
+                        value: v.value,
+                        variablesReference: v.variablesReference
+                    };
+                    this.sendResponse( response );    
+                })
+            }   
+        }).catch( err =>{
+            this.requestFailedResponse( response, "Eval request failed: " + err );
+        });
     }
     
     //-----------------------------------------------------------
