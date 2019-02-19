@@ -390,7 +390,7 @@ class ErrorCode
     public static RequestFailed = 100;
 }
 
-class DukDebugSession extends DebugSession
+export class DukDebugSession extends DebugSession
 {
     private static THREAD_ID = 1;
         
@@ -755,7 +755,8 @@ class DukDebugSession extends DebugSession
         let remBPs:DukBreakPoint[]  = [];
 
         let fileBPs:DukBreakPoint[]    = this._breakpoints.getBreakpointsForFile( filePath );
-        let successBPs:DukBreakPoint[] = [];   // List of successfully added breakpoints
+        let addedBPs:DukBreakPoint[] = [];   // List of successfully added breakpoints
+        let removedBPs:DukBreakPoint[] = [];   // List of successfully removed breakpoints
         let persistBPs:DukBreakPoint[] = [];
 
         // Convert the breakpoint lines first
@@ -788,7 +789,15 @@ class DukDebugSession extends DebugSession
             if( i >= remBPs.length )
                 return Promise.resolve();
 
+            let bp           :DukBreakPoint = remBPs[i];
+
             return this._dukProto.requestRemoveBreakpoint( remBPs[i].dukIdx )
+            .then(() => {
+                // Immediately update breakpoint map. Indices may change for subsequent requests.
+                this._breakpoints.removeBreakpoints( [bp] );
+
+                removedBPs.push(bp);
+            })
             .catch() // Simply don't add the breakpoint if it failed.
             .then(() => {
                 // Remove the next one
@@ -823,10 +832,12 @@ class DukDebugSession extends DebugSession
 
             return this._dukProto.requestSetBreakpoint( generatedName, line )
             .then( (r:DukAddBreakResponse) => {
+                // Immediately update breakpoint map. Indices may change for subsequent requests.
+                this._breakpoints.addBreakpoints( [bp] );
                 
                 /// Save the breakpoints to the file source
                 //this.dbgLog( "BRK: " + r.index + " ( " + bp.line + ")");
-                successBPs.push( bp );                
+                addedBPs.push( bp );
             })
             .catch() // Simply don't add the breakpoint if it failed.
             .then(() => {
@@ -842,16 +853,12 @@ class DukDebugSession extends DebugSession
         .catch()
         .then( () => {
 
-            // Update breakpoint map
-            this._breakpoints.removeBreakpoints( remBPs );
-            this._breakpoints.addBreakpoints( successBPs );
-
             // Send response
-            successBPs = persistBPs.concat( successBPs );
+            addedBPs = persistBPs.concat( addedBPs );
 
-            let outBreaks = new Array<Breakpoint>( successBPs.length );
-            for( let i = 0; i < successBPs.length; i++ )
-                outBreaks[i] = new Breakpoint( true, successBPs[i].line)
+            let outBreaks = new Array<Breakpoint>( addedBPs.length );
+            for( let i = 0; i < addedBPs.length; i++ )
+                outBreaks[i] = new Breakpoint( true, addedBPs[i].line)
             
             response.body = { breakpoints: outBreaks };
             this.sendResponse( response );
