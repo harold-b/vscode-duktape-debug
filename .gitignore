@@ -5,3 +5,4 @@ out/
 */bin/**
 */obj/**
 *.vsix
+.DS_Store

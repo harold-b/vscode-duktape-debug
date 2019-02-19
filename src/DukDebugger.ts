@@ -14,7 +14,7 @@ import * as Path from 'path';
 import * as FS   from 'fs';
 import * as util from 'util';
 import * as assert from 'assert';
-import { ISourceMaps, SourceMaps, SourceMap, Bias } from './sourceMaps';
+import { ISourceMaps, SourceMaps, SourceMap, Bias, MappingResult } from './sourceMaps';
 import * as PathUtils from './pathUtilities';
 
 import * as Promise from "bluebird"     ;
@@ -33,6 +33,7 @@ import {
     DukAlertNotification,
     DukLogNotification,
     DukThrowNotification,
+    DukAppNotification,
     
     // Responses
     DukListBreakResponse,
@@ -487,8 +488,44 @@ export class DukDebugSession extends DebugSession
         
         // Throw
         this._dukProto.on( DukEvent[DukEvent.nfy_throw], ( e:DukThrowNotification ) => {
-            this.logToClient( `Exception thrown @${e.fileName}:${e.lineNumber}: ${e.message}\n`, "stderr" );
             this._expectingBreak = "Exception";
+
+            var sendEvent = function () {
+                var source: Source = new Source(e.fileName, Path.resolve(this._outDir, e.fileName));
+                var outputEventOptions = {
+                    source: source,
+                    line: e.lineNumber,
+                    column: 1,
+                };
+                this.logToClient( `Exception thrown: ${e.message}\n`, "stderr", outputEventOptions );
+            }.bind(this);
+
+            if (this._sourceMaps) {
+                var sourceMap: SourceMap = this._sourceMaps.FindSourceToGeneratedMapping(Path.resolve(this._outDir, e.fileName));
+                if (sourceMap && sourceMap._loading) {
+                    sourceMap._loading.then(() => {
+                        var mappingResult: MappingResult = this._sourceMaps.MapToSource(Path.resolve(this._outDir, e.fileName), e.lineNumber, 0);
+                        if (!mappingResult) {
+                            sendEvent();
+                            return;
+                        }
+                        var source: Source = new Source(e.fileName, mappingResult.path);
+                        var outputEventOptions = {
+                            source: source,
+                            line: mappingResult.line,
+                            column: mappingResult.column,
+                        };
+                        this.logToClient( `Exception thrown: ${e.message}\n`, "stderr", outputEventOptions );
+                    });
+                    return;
+                }
+            }
+
+            sendEvent();
+        });
+
+        this._dukProto.on( DukEvent[DukEvent.nfy_appmsg], ( e:DukAppNotification ) => {
+            this.logToClient( e.messages.join(' ') + '\n' );
         });
     }
 
@@ -513,7 +550,7 @@ export class DukDebugSession extends DebugSession
                 this.logToClient( "Attached to duktape debugger.\n" );
                 conn.removeAllListeners();
 
-                this.logToClient( `Protocol ID: ${version.id}` );
+                this.logToClient( `Protocol ID: ${version.id}\n` );
 
                 var proto:any;
 
@@ -2208,9 +2245,11 @@ export class DukDebugSession extends DebugSession
     }
     
     //-----------------------------------------------------------
-    private logToClient( msg:string, category?:string ) : void
+    private logToClient( msg:string, category?:string, outputEventOptions?:object ) : void
     {
-        this.sendEvent( new OutputEvent( msg, category ) );
+        var outputEvent = new OutputEvent( msg, category );
+        Object.assign(outputEvent.body, outputEventOptions);
+        this.sendEvent( outputEvent );
         console.log( msg );
     }
 

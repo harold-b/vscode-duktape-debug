@@ -61,7 +61,7 @@ export class SourceMaps implements ISourceMaps {
 
 	public MapPathFromSource(pathToSource: string):SourceMap 
     {
-		var map = this._findSourceToGeneratedMapping(pathToSource);
+		var map = this.FindSourceToGeneratedMapping(pathToSource);
 		if (map)
 			return map;
 		return null;
@@ -69,7 +69,7 @@ export class SourceMaps implements ISourceMaps {
 
 	public MapFromSource(pathToSource: string, line: number, column: number, bias?: Bias): MappingResult
     {
-		const map = this._findSourceToGeneratedMapping(pathToSource);
+		const map = this.FindSourceToGeneratedMapping(pathToSource);
 		if (map) {
             
 			const mr = map.generatedPositionFor(pathToSource, line, column, bias);
@@ -113,7 +113,7 @@ export class SourceMaps implements ISourceMaps {
 	 * - search in all known source maps whether if refers to this source in the sources array.
 	 * - ...
 	 */
-	private _findSourceToGeneratedMapping(pathToSource: string): SourceMap {
+	public FindSourceToGeneratedMapping(pathToSource: string): SourceMap {
 
 		if (!pathToSource) {
 			return null;
@@ -141,7 +141,7 @@ export class SourceMaps implements ISourceMaps {
 					const map_path = Path.join(this._generatedCodeDirectory, map_name);
 					const m = this._loadSourceMap(map_path);
 					if (m && m.doesOriginateFrom(pathToSource)) {
-						//this._log(`_findSourceToGeneratedMapping: found source map for source ${pathToSource} in outDir`);
+						//this._log(`FindSourceToGeneratedMapping: found source map for source ${pathToSource} in outDir`);
 						this._sourceToGeneratedMaps[pathToSource] = m;
 						return m;
 					}
