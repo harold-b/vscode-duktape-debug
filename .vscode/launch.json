@@ -1,11 +1,9 @@
 {
 	"version": "0.2.0",
 	"configurations": [
-		
+
 		// Debugging the debugger instructions:
-		// First, Launch Duktape Debug Server.
-		// Then Launch Duktape Debugger Extension to start the extension
-		// in a new window.
+		// Launch "Server + Extension" debug configuration.
 		// From the launched extension, configure your duk script to launch
 		// in "debugServer" mode.
 		// This can be done by specifying the following "duk" launch.json
@@ -27,7 +25,7 @@
 		// between the extension and the remote debug  target with the
 		// Duktape Debug Server server acting a man-in-the-middle.
         {
-            
+
 			"name"        : "Launch Duktape Debug Server",
 			"type"        : "node",
 			"request"     : "launch",
@@ -52,7 +50,7 @@
 			"runtimeExecutable" : "${execPath}",
 			"stopOnEntry"       : false,
 			"sourceMaps"        : true,
-            
+
 			"args": [
 				"--extensionDevelopmentPath=${workspaceRoot}"
 			],
@@ -61,7 +59,7 @@
 
 			"preLaunchTask"     : "build",
 		},
-        
+
 		// Use this to debug the gulp build pipeline.
 		{
 			"name"        : "Debug Gulp Pipeline",
@@ -74,6 +72,16 @@
 			"cwd"         : "${workspaceRoot}",
 			"sourceMaps"  : false
 		},
+	],
 
+	// Use this to launch the server and extension together for debugging.
+	"compounds": [
+		{
+			"name": "Server + Extension",
+			"configurations": [
+				"Launch Duktape Debug Server",
+				"Launch Duktape Debugger Extension"
+			]
+		}
 	]
 }
