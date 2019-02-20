@@ -38,7 +38,9 @@
 			"args"        : [ "--server=4711" ],
 			"sourceMaps"  : true,
 			"outFiles"    : [ "${workspaceRoot}/out/*.js"],
-			"cwd"         : "${workspaceRoot}"
+			"cwd"         : "${workspaceRoot}",
+
+			"preLaunchTask": "build"
 		},
 
 		{
@@ -55,7 +57,7 @@
 
             "outFiles": [ "${workspaceRoot}/out/**/*.js" ],
 
-			"preLaunchTask": "npm: watch"
+			"preLaunchTask": "build"
 		},
 
 		// Use this to debug the gulp build pipeline.

@@ -581,7 +581,7 @@ export class DukDebugSession extends DebugSession
     }
 
     //-----------------------------------------------------------
-    // Finalize initialization, sned initialized event
+    // Finalize initialization, send initialized event
     //-----------------------------------------------------------
     private finalizeInit( response:DebugProtocol.Response ) : void
     {
