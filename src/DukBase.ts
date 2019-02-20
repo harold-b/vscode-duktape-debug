@@ -17,9 +17,9 @@ export enum DvalIB
     REP               = MsgType.REP,
     ERR               = MsgType.ERR,
     NFY               = MsgType.NFY,
-    
+
     // RESERVED       = 0x05-0x0f
-    
+
     // Values
     INT32             = 0x10,
     STR32             = 0x11,
@@ -106,8 +106,8 @@ export enum ErrorType
     NOTFOUND      = 0x03,
     APP_ERROR     = 0x04
 }
-    
-export var ERR_TYPE_MAP:Array<string> = [
+
+export const ERR_TYPE_MAP:Array<string> = [
     "Unknown or unspecified error",
     "Unsupported command",
     "Too many",
@@ -153,53 +153,65 @@ export class TValPointer
     public size  :number;   // Expected to be 4 or 8
     public lopart:number;   // For 32-bit debug target, this part is used only
     public hipart:number;   // For 64-bit debug target, append this as the most significant bits to lopart
-    
+
     public constructor( size:number, lopart:number, hipart:number )
     {
         this.size   = size;
         this.lopart = lopart;
         this.hipart = hipart;
     }
-    
+
     public isNull() : boolean
     {
-        return this.size == 0;
+        return this.size === 0;
     }
-    
+
     public static NullPtr() : TValPointer
     {
         return new TValPointer( 0, 0, 0 );
     }
-    
+
     public static TryConvert( obj:any ) : TValPointer
     {
         if( obj instanceof TValPointer )
+        {
             return <TValPointer>obj;
+        }
         else if( obj instanceof TValObject )
+        {
             return (<TValObject>obj).ptr;
+        }
         else if( obj instanceof TValLightFunc )
+        {
             return (<TValLightFunc>obj).ptr;
+        }
         else if( obj instanceof TValue )
+        {
             return  TValPointer.TryConvert( (<TValue>obj).val );
+        }
         else
+        {
             return null;
+        }
     }
-    
+
     public toString() : string
     {
-        return this.size == 4 ? `0x${this.toPaddedHex(this.lopart)}` :
+        return this.size === 4 ? `0x${this.toPaddedHex(this.lopart)}` :
                 `0x${this.toPaddedHex(this.hipart)}${this.toPaddedHex(this.lopart)}`;
-    } 
-    
-    private toPaddedHex( n:number ) : string 
+    }
+
+    private toPaddedHex( n:number ) : string
     {
         let s = n.toString( 16 );
         let z = "";
         let c = 8 - s.length;
-        
+
         for( let i=0; i < c; i++ )
+        {
             z += '0';
-        
+        }
+
         return z + s;
     }
 }
@@ -208,13 +220,13 @@ export class TValObject
 {
     public classID : number;
     public ptr     : TValPointer;
-    
+
     public constructor( classID:number, ptr:TValPointer )
     {
         this.classID = classID;
         this.ptr     = ptr;
     }
-    
+
     public toString() : string
     {
         return `{ cls: ${this.classID}, ptr: ${this.ptr.toString()} }`;
@@ -225,13 +237,13 @@ export class TValLightFunc
 {
     public flags : number;
     public ptr   : TValPointer;
-    
+
     public constructor( flags:number, ptr:TValPointer )
     {
         this.flags = flags;
         this.ptr   = ptr;
     }
-    
+
     public toString() : string
     {
         return `{ flags: ${this.flags}, ptr: ${this.ptr.toString()} }`;
@@ -244,59 +256,59 @@ export class TValue
 {
     type : TValueType ;
     val  : TValueUnion;
-    
+
     constructor( type:TValueType, val:TValueUnion )
     {
         this.type = type;
         this.val  = val ;
     }
-    
+
     public static Unused() : TValue
     {
         return new TValue( TValueType.UNUSED, undefined );
     }
-    
+
     public static Undefined() : TValue
     {
         return new TValue( TValueType.UNDEFINED, undefined );
     }
-    
+
     public static Null() : TValue
     {
         return new TValue( TValueType.NULL, null );
     }
-    
+
     public static Bool( val:boolean ) : TValue
     {
         return new TValue( TValueType.BOOLEAN, val );
     }
-    
+
     public static Number( val:number ) : TValue
     {
         return new TValue( TValueType.NUMBER, val );
     }
-    
+
     public static String( val:string ) : TValue
     {
         return new TValue( TValueType.STRING, val );
     }
-    
+
     public static Buffer( val:Buffer ) : TValue
     {
         return new TValue( TValueType.BUFFER, val );
     }
-    
+
     public static Object( classID:number, ptr:TValPointer ) : TValue
     {
-        return new TValue( TValueType.OBJECT, 
+        return new TValue( TValueType.OBJECT,
                             new TValObject( classID, ptr) );
     }
-    
+
     public static Pointer( ptr:TValPointer ) : TValue
     {
         return new TValue( TValueType.POINTER, ptr );
     }
-    
+
     public static LightFunc( val:TValLightFunc ) : TValue
     {
         return new TValue( TValueType.LIGHTFUNC, val );
@@ -309,7 +321,7 @@ export class DValue
 {
     public type :DValKind;
     public value:DValueUnion;
-    
+
     constructor( type:DValKind, value:DValueUnion )
     {
         this.type  = type ;
@@ -328,7 +340,6 @@ export class Property
 
     public get isAccessor() : boolean
     {
-        return ( this.flags & PropDescFlag.ATTR_ACCESSOR) != 0; 
+        return ( this.flags & PropDescFlag.ATTR_ACCESSOR) !== 0;
     }
 }
-

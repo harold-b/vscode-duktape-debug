@@ -68,7 +68,7 @@ export function realPath(path: string): string {
 	try {
 		let entries = FS.readdirSync(dir);
 		let found = entries.filter(e => e.toLowerCase() === name);	// use a case insensitive search
-		if (found.length == 1) {
+		if (found.length === 1) {
 			// on a case sensitive filesystem we cannot determine here, whether the file exists or not, hence we need the 'file exists' precondition
 			let prefix = realPath(dir);   // recurse
 			if (prefix) {
@@ -157,15 +157,15 @@ export function makeRelative2(from: string, to: string): string {
 	from = normalize(from);
 	to = normalize(to);
 
-	var froms = from.substr(1).split('/');
-	var tos = to.substr(1).split('/');
+	const froms = from.substr(1).split('/');
+	const tos = to.substr(1).split('/');
 
 	while (froms.length > 0 && tos.length > 0 && froms[0] === tos[0]) {
 		froms.shift();
 		tos.shift();
 	}
 
-	var l = froms.length - tos.length;
+	let l = froms.length - tos.length;
 	if (l === 0) {
 		l = tos.length - 1;
 	}

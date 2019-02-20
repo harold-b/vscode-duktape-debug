@@ -90,7 +90,7 @@ export class DukStatusNotification extends DukNotificationMessage
 
     constructor( msg:DukDvalueMsg )
     {
-        assert( msg.length == 8 );
+        assert( msg.length === 8 );
         super( Duk.NotifyType.STATUS );
 
         this.state      = <DukStatusState>msg[2].value;
@@ -150,8 +150,10 @@ export class DukThrowNotification extends DukNotificationMessage
     {
         super( Duk.NotifyType.THROW );
 
-        if( msg.length != 7 )
+        if( msg.length !== 7 )
+        {
             throw new Error( "Invalid notification message." );
+        }
 
         this.fatal      = <DukThrowFatal><number>msg[2].value;
         this.message    = <string>msg[3].value;
@@ -175,7 +177,7 @@ export class DukAppNotification extends DukNotificationMessage
     constructor( msg:DukDvalueMsg )
     {
         super( Duk.NotifyType.PRINT );
-        this.messages = msg.slice(2, msg.length - 1).map(m => m.value != null ? m.value.toString() : null);
+        this.messages = msg.slice(2, msg.length - 1).map(m => m.value !== null ? m.value.toString() : null);
     }
 }
 
@@ -221,8 +223,10 @@ export class DukBasicInfoResponse extends DukResponse
     {
         super( Duk.CmdType.BASICINFO );
 
-        if( msg.length != 7 )
+        if( msg.length !== 7 )
+        {
             throw new Error( "Invalid 'BasicInfo' response message." );
+        }
 
         this.version    = <number>msg[1].value;
         this.gitDesc    = <string>msg[2].value;
@@ -230,9 +234,10 @@ export class DukBasicInfoResponse extends DukResponse
         this.endianness = <DukEndianness>msg[4].value;
         this.ptrSize    = <number>msg[5].value;
 
-        if( this.endianness < DukEndianness.Little ||
-            this.endianness > DukEndianness.Big )
-                throw new Error( "Invalid endianness" );
+        if( this.endianness < DukEndianness.Little || this.endianness > DukEndianness.Big )
+        {
+            throw new Error( "Invalid endianness" );
+        }
     }
 }
 
@@ -244,8 +249,11 @@ export class DukAddBreakResponse extends DukResponse
     {
         super( Duk.CmdType.ADDBREAK );
 
-        assert( msg.length == 3 );
-        if( msg[1].type !== Duk.DValKind.int ) throw new TypeError( );
+        assert( msg.length === 3 );
+        if( msg[1].type !== Duk.DValKind.int )
+        {
+            throw new TypeError( );
+        }
 
         this.index = <number>msg[1].value;
     }
@@ -278,15 +286,17 @@ export class DukGetCallStackResponse extends DukResponse
         super( Duk.CmdType.GETCALLSTACK );
 
         let len = ( msg.length - 2 );
-        if( len == 0 )
+        if( len === 0 )
         {
             this.callStack = new DukCallStackEntry[0];
         }
         else
         {
-            assert( len % 4 == 0 );
-            if( len % 4 != 0 )
+            assert( len % 4 === 0 );
+            if( len % 4 !== 0 )
+            {
                 throw new Error( "Incorrect stack frame values." );
+            }
 
             this.callStack        = new Array<DukCallStackEntry>();
             this.callStack.length = len/4;
@@ -314,12 +324,16 @@ export class DukGetLocalsResponse extends DukResponse
         super( Duk.CmdType.GETLOCALS );
 
         let len = ( msg.length - 2 );
-        if( len == 0 )
+        if( len === 0 )
+        {
             return;
+        }
 
-        assert( len % 2 == 0 );
-        if( len % 2 != 0 )
+        assert( len % 2 === 0 );
+        if( len % 2 !== 0 )
+        {
             throw new Error( "Invalid 'GetLocals' response message." );
+        }
 
         this.vars.length = len/2;
 
@@ -349,12 +363,16 @@ export class DukListBreakResponse extends DukResponse
         super( Duk.CmdType.LISTBREAK );
 
         let len = ( msg.length - 2 );
-        if( len == 0 )
+        if( len === 0 )
+        {
             return;
+        }
 
-        assert( len % 2 == 0 );
-        if( len % 2 != 0 )
+        assert( len % 2 === 0 );
+        if( len % 2 !== 0 )
+        {
             throw new Error( "Invalid 'ListBreakpoints' response message." );
+        }
 
         this.breakpoints.length = len/2;
 
@@ -378,10 +396,12 @@ export class DukEvalResponse extends DukResponse
     {
         super( Duk.CmdType.EVAL );
 
-        if( msg.length != 4 )
+        if( msg.length !== 4 )
+        {
             throw new Error( "Invalid 'Eval' response message." );
+        }
 
-        this.success = ((<number>msg[1].value) == 0);
+        this.success = ((<number>msg[1].value) === 0);
         this.result  = <Duk.DValueUnion>msg[2].value;
     }
 }
@@ -409,7 +429,9 @@ export class DukGetHeapObjInfoResponse extends DukResponse
 
             // If it's ann accessor, we must parse 2 values
             if( prop.flags & Duk.PropDescFlag.ATTR_ACCESSOR )
+            {
                 prop.value = <any>[ prop.value, <any>msg[i++].value];
+            }
 
             this.properties.push( prop );
         }
@@ -432,7 +454,7 @@ export class DukGetHeapObjInfoResponse extends DukResponse
 
         for( let i = 0; i < this.properties.length; i++ )
         {
-            if( this.properties[i].key == "e_next" ) {
+            if( this.properties[i].key === "e_next" ) {
                 e_next = this.properties[i];
                 break;
             }
@@ -440,7 +462,7 @@ export class DukGetHeapObjInfoResponse extends DukResponse
 
         for( let i = 0; i < this.properties.length; i++ )
         {
-            if( this.properties[i].key == "a_size" ) {
+            if( this.properties[i].key === "a_size" ) {
                 a_size = this.properties[i];
                 break;
             }
@@ -456,8 +478,10 @@ export class DukGetHeapObjInfoResponse extends DukResponse
     {
         for( let i = 0; i < this.properties.length; i++ )
         {
-            if( this.properties[i].key == "e_next" )
+            if( this.properties[i].key === "e_next" )
+            {
                 return <number>this.properties[i].value;
+            }
         }
     }
 }
@@ -517,9 +541,9 @@ export class DukGetClosureResponse extends DukResponse
             for( ; i < msg.length-1; i++ )
             {
                 // Check if the scope is finished?
-                if( msg[i].type == Duk.DValKind.int )
+                if( msg[i].type === Duk.DValKind.int )
                 {
-                    assert( (<number>msg[i].value) == 0 );
+                    assert( (<number>msg[i].value) === 0 );
                     scopes.push( scope );
                     break;  // Continue to next scope
                 }
@@ -530,7 +554,9 @@ export class DukGetClosureResponse extends DukResponse
         }
 
         if( scopes.length < 2 )
+        {
             throw new Error( "GETSCOPEKEYS: Returned less than 2 scopes." );
+        }
 
         this.local   = scopes[0];
         this.global  = scopes[scopes.length-1];
@@ -541,7 +567,9 @@ export class DukGetClosureResponse extends DukResponse
             for( let i=1; i < scopes.length-1; i++ )
             {
                 for( let j=0; j < scopes[i].length; j++ )
+                {
                     this.closure.push( scopes[i][j] );
+                }
             }
         }
 
@@ -613,7 +641,9 @@ class DukMsgBuilder
 
         // TODO: Need to use CESU-8, which is what duktape uses.
         if( val === undefined || val.length < 1 )
+        {
             this.writeUndefined();
+        }
         else
         {
             let strbuf:Buffer = this.encodeString( val );
@@ -656,7 +686,7 @@ class DukMsgBuilder
 
         let offset = 0;
 
-        if( ptr.size == 8 )
+        if( ptr.size === 8 )
         {
             this.buf.writeUInt32BE( ptr.hipart, this.length );
             offset = 4;
@@ -688,7 +718,9 @@ class DukMsgBuilder
         let newBuf = new Buffer( this.length );
 
         if( this.length > 0 )
+        {
             this.buf.copy( newBuf, 0, 0, this.length );
+        }
 
         this.clear();
 
@@ -841,14 +873,18 @@ export class DukDbgProtocol extends EE.EventEmitter
         });
 
         if ( remainderBuf.length > 0 )
+        {
             this.onReceiveData(remainderBuf);
+        }
     }
 
     //-----------------------------------------------------------
     public disconnect( reason:string = "" ):void
     {
         if( !this.isConnected )
+        {
             return;
+        }
 
         this._conn.closeSocket( reason );
         this._conn = null;
@@ -858,7 +894,9 @@ export class DukDbgProtocol extends EE.EventEmitter
     private onDisconnected( reason:string ):void
     {
         if( this._emmitedDisonnected )
+        {
             return;
+        }
 
         this._emmitedDisonnected = true;
         this._conn = null;
@@ -976,7 +1014,7 @@ export class DukDbgProtocol extends EE.EventEmitter
         this._outBuf.writeREQ();
         this._outBuf.writeInt( Duk.CmdType.EVAL );
 
-        if( this._version.proto == 1 )
+        if( this._version.proto === 1 )
         {
             // @protocol_version:1
             // REQ <int: 0x1e> <str: expression> [<int: level>] EOM
@@ -984,7 +1022,7 @@ export class DukDbgProtocol extends EE.EventEmitter
             this._outBuf.writeInt( stackLevel );
             this._outBuf.writeEOM();
         }
-        else if( this._version.proto == 2 )
+        else if( this._version.proto === 2 )
         {
             // @protocol_version:2
             // REQ <int: 0x1e> (<int: level> | <null>) <str: expression> EOM
@@ -1066,7 +1104,7 @@ export class DukDbgProtocol extends EE.EventEmitter
     //-----------------------------------------------------------
     private sendRequest( cmd:number, buf:Buffer ) : Promise<any>
     {
-        var pcontext = new PromiseContext();
+        const pcontext = new PromiseContext();
 
         let cb = ( resolve, reject:any ) =>
         {
@@ -1078,7 +1116,7 @@ export class DukDbgProtocol extends EE.EventEmitter
         let req = new PendingRequest( cmd, ++this._requestSequence,
                                       p, pcontext, buf );
 
-        if( this._curRequest != null )
+        if( this._curRequest !== null )
         {
             // There's still a request pending, queue this one instead
             this._requestQueue.push( req );
@@ -1087,7 +1125,9 @@ export class DukDbgProtocol extends EE.EventEmitter
         {
             // Submit the request immediately
             if( !this.submitRequest( req ) )
+            {
                 return Promise.reject( "Failed to submit request." );
+            }
         }
 
         return p;
@@ -1096,7 +1136,7 @@ export class DukDbgProtocol extends EE.EventEmitter
     //-----------------------------------------------------------
     private submitRequest( req:PendingRequest ) : boolean
     {
-        assert( this._curRequest == null && this._conn && this._conn._socket );
+        assert( this._curRequest === null && this._conn && this._conn._socket );
 
         if( MSG_TRACING )
         {
@@ -1105,7 +1145,7 @@ export class DukDbgProtocol extends EE.EventEmitter
         }
 
         // Send request down the stream
-        var socket = this._conn._socket;
+        const socket = this._conn._socket;
 
         if( !socket.write( req.buf ) )
         {
@@ -1164,12 +1204,12 @@ export class DukDbgProtocol extends EE.EventEmitter
             // Pointers are stored in the byte order
             // of the client, to facilitate inspection.
 
-            if( size == 4 )
+            if( size === 4 )
             {
                 // Store as little-endian if that's our byte order
                 lopart = dvalBuf.readUInt32BE( 0 );
             }
-            else if( size == 8 )
+            else if( size === 8 )
             {
                 // On LE systems hipart and lopart should be swapped,
                 // but we want to keep them like this simply to have them
@@ -1178,7 +1218,9 @@ export class DukDbgProtocol extends EE.EventEmitter
                 lopart = dvalBuf.readUInt32BE( 4 );
             }
             else
+            {
                 throw new Error( `Unknown pointer size: ${size}` );
+            }
 
             return new Duk.TValPointer( size, lopart, hipart );
         };
@@ -1193,7 +1235,9 @@ export class DukDbgProtocol extends EE.EventEmitter
             {
                 // 0xc0...0xff: integers 0-16383
                 if( remaining() < 1 )
+                {
                     return; // not enough data to parse dvalue
+                }
 
                 v = new Duk.DValue( Duk.DValKind.int,
                                    ((x - 0xc0) << 8) + buf[pos++] );
@@ -1214,7 +1258,9 @@ export class DukDbgProtocol extends EE.EventEmitter
                     pos += len;
                 }
                 else
+                {
                     return; // not enough data to parse dvalue
+                }
             }
             else
             {
@@ -1236,7 +1282,9 @@ export class DukDbgProtocol extends EE.EventEmitter
                     case Duk.DvalIB.INT32 :
 
                         if( remaining() < 4 )
+                        {
                             return;
+                        }
 
                         v = new Duk.DValue( Duk.DValKind.int, buf.readInt32BE( pos ) );
                         pos += 4;
@@ -1252,14 +1300,18 @@ export class DukDbgProtocol extends EE.EventEmitter
                             pos += 4;
 
                             if( remaining() < len )
+                            {
                                 return;
+                            }
 
                             v = new Duk.DValue( Duk.DValKind.str,
                                                 this.bufferToDebugString( buf, pos, len ) );
                             pos += len;
                         }
                         else
-                            return;
+                        {
+                            return
+                        };
 
                     break;
 
@@ -1272,14 +1324,18 @@ export class DukDbgProtocol extends EE.EventEmitter
                             pos += 2;
 
                             if( remaining() < len )
+                            {
                                 return;
+                            }
 
                             v = new Duk.DValue( Duk.DValKind.str,
                                                 this.bufferToDebugString( buf, pos, len ) );
                             pos += len
                         }
                         else
+                        {
                             return;
+                        }
 
                     break;
 
@@ -1292,7 +1348,9 @@ export class DukDbgProtocol extends EE.EventEmitter
                             pos += 4;
 
                             if( remaining() < len )
+                            {
                                 return;
+                            }
 
                             let dvalBuf = new Buffer( len );
                             buf.copy( dvalBuf, 0, pos, pos + len );
@@ -1301,7 +1359,9 @@ export class DukDbgProtocol extends EE.EventEmitter
                             pos += len;
                         }
                         else
+                        {
                             return;
+                        }
                     break;
 
                     // 0x14 2-byte buffer
@@ -1313,7 +1373,9 @@ export class DukDbgProtocol extends EE.EventEmitter
                             pos += 2;
 
                             if( remaining() < len )
+                            {
                                 return;
+                            }
 
                             let dvalBuf = new Buffer( len );
                             buf.copy( dvalBuf, 0, pos, pos + len );
@@ -1322,7 +1384,9 @@ export class DukDbgProtocol extends EE.EventEmitter
                             pos += len;
                         }
                         else
+                        {
                             return;
+                        }
 
                     break;
 
@@ -1360,7 +1424,9 @@ export class DukDbgProtocol extends EE.EventEmitter
                             pos += 8;
                         }
                         else
+                        {
                             return;
+                        }
 
                     break;
 
@@ -1375,7 +1441,9 @@ export class DukDbgProtocol extends EE.EventEmitter
                             pos += 2;
 
                             if( remaining() < len )
+                            {
                                 return;
+                            }
 
                             let ptr = readPtr( len );
                             v = new Duk.DValue( Duk.DValKind.tval, new Duk.TValObject( cls, ptr ) );
@@ -1383,7 +1451,9 @@ export class DukDbgProtocol extends EE.EventEmitter
                             pos += len;
                         }
                         else
+                        {
                             return;
+                        }
 
                     break;
 
@@ -1395,7 +1465,9 @@ export class DukDbgProtocol extends EE.EventEmitter
                             let len = buf[pos++];
 
                             if( remaining() < len )
+                            {
                                 return;
+                            }
 
                             let ptr = readPtr( len );
                             v = new Duk.DValue( Duk.DValKind.ptr, ptr );
@@ -1403,7 +1475,9 @@ export class DukDbgProtocol extends EE.EventEmitter
                             pos += len;
                         }
                         else
+                        {
                             return;
+                        }
 
                     break;
 
@@ -1417,7 +1491,9 @@ export class DukDbgProtocol extends EE.EventEmitter
                             pos += 3;
 
                             if( remaining() < len )
+                            {
                                 return;
+                            }
 
                             let ptr = readPtr( len );
                             v = new Duk.DValue( Duk.DValKind.tval, new Duk.TValLightFunc( flags, ptr) );
@@ -1426,7 +1502,9 @@ export class DukDbgProtocol extends EE.EventEmitter
 
                         }
                         else
+                        {
                             return;
+                        }
 
                     break;
 
@@ -1438,7 +1516,9 @@ export class DukDbgProtocol extends EE.EventEmitter
                             let len = buf[pos++];
 
                             if( remaining() < len )
+                            {
                                 return;
+                            }
 
                             let ptr = readPtr( len );
 
@@ -1447,7 +1527,9 @@ export class DukDbgProtocol extends EE.EventEmitter
                             pos += len;
                         }
                         else
+                        {
                             return;
+                        }
                     break;
 
                     default :
@@ -1488,8 +1570,8 @@ export class DukDbgProtocol extends EE.EventEmitter
         if( MSG_TRACING )
         {
             if( LOG_STATUS_NOTIFY ||
-                ( msg[0].value != Duk.MsgType.NFY ||
-                  msg[1].value != Duk.NotifyType.STATUS ) )
+                ( msg[0].value !== Duk.MsgType.NFY ||
+                  msg[1].value !== Duk.NotifyType.STATUS ) )
             {
                 let mStr = "IN <- ";
                 for( let i=0; i < msg.length; i++ )
@@ -1584,7 +1666,7 @@ export class DukDbgProtocol extends EE.EventEmitter
     //-----------------------------------------------------------
     private parseResponseMessage( msg:DukDvalueMsg ) : void
     {
-        assert( this._curRequest != null );
+        assert( this._curRequest !== null );
 
         let req = this._curRequest;
         this._curRequest = null;
@@ -1597,7 +1679,7 @@ export class DukDbgProtocol extends EE.EventEmitter
 
         let cmd = req.cmd;
 
-        if( msg[0].value == Duk.MsgType.ERR )
+        if( msg[0].value === Duk.MsgType.ERR )
         {
             let errType:number = msg.length > 2 ? <number>msg[1].value : 0;
             let errMsg :string = msg.length > 3 ? <string>msg[2].value : "";
@@ -1702,7 +1784,9 @@ export class DukDbgProtocol extends EE.EventEmitter
 
             // Complete promise
             if( !failed )
+            {
                 req.pcontext.resolve( value );
+            }
         }
 
         // Process next queued request, if any
@@ -1711,9 +1795,13 @@ export class DukDbgProtocol extends EE.EventEmitter
             let req = this._requestQueue.shift();
 
             if( this.submitRequest( req ) )
+            {
                 break;
+            }
             else
+            {
                 req.pcontext.reject( "Failed to submit request." );
+            }
         }
 
     }
@@ -1763,7 +1851,9 @@ export class DukDbgProtocol extends EE.EventEmitter
         let available = data.length;
 
         if( ( this._inBufSize + available ) > buf.length )
+        {
             return false;
+        }
 
         data.copy( buf, this._inBufSize, 0, available );
         this._inBufSize += available;
@@ -1776,7 +1866,9 @@ export class DukDbgProtocol extends EE.EventEmitter
     {
         let remainder = this._inBufSize - count;
         if( remainder > 0 )
+        {
             this._inBuf.copy( this._inBuf, 0, count, this._inBufSize );   // Move memory down
+        }
 
         this._inBufSize = remainder;
     }

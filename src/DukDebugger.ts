@@ -2,7 +2,7 @@
 import {
     DebugSession, Thread, Source, StackFrame, Scope, Variable, Breakpoint,
     TerminatedEvent, InitializedEvent, StoppedEvent, ContinuedEvent, OutputEvent,
-    Handles, ErrorDestination
+    Handles
 } from 'vscode-debugadapter';
 
 import {
@@ -12,10 +12,8 @@ import {
 import * as Net  from 'net';
 import * as Path from 'path';
 import * as FS   from 'fs';
-import * as util from 'util';
 import * as assert from 'assert';
-import { ISourceMaps, SourceMaps, SourceMap, Bias, MappingResult } from './sourceMaps';
-import * as PathUtils from './pathUtilities';
+import { SourceMaps, SourceMap, Bias, MappingResult } from './sourceMaps';
 
 import * as Promise from "bluebird"     ;
 
@@ -39,7 +37,6 @@ import {
     DukListBreakResponse,
     DukAddBreakResponse,
     DukGetCallStackResponse,
-    DukCallStackEntry,
     DukGetLocalsResponse,
     DukEvalResponse,
     DukGetHeapObjInfoResponse,
@@ -48,12 +45,7 @@ import {
 
 } from "./DukDbgProtocol";
 
-//import { DukDbgProtocol as DukDebugProto1_5_0 } from "./v1.5.0/DukDbgProtocol";
-//import { DukDbgProtocol as DukDebugProto2_0_0 } from "./v2.0.0/DukDbgProtocol";
-
 import * as Duk from "./DukBase";
-import { SourceMapConsumer } from 'source-map';
-
 
  // Arguments shared between Launch and Attach requests.
 export interface CommonArguments {
@@ -121,8 +113,12 @@ class ArrayX
     public static firstOrNull<T>( target:Array<T>, comparer:( value:T ) => boolean ) : T
     {
         for( let i=0; i < target.length; i++ )
+        {
             if( comparer( target[i] ) )
+            {
                 return target[i];
+            }
+        }
 
         return null;
     }
@@ -131,7 +127,9 @@ class ArrayX
     {
         let result = new Array<U>( target.length );
         for( let i=0; i < target.length; i++ )
+        {
             result[i] = converter( target[i] );
+        }
 
         return result;
     }
@@ -183,7 +181,9 @@ class BreakPointMap
         for( let i = 0; i < len; i++ )
         {
             if( bps[i].filePath === filePath )
+            {
                 result.push( bps[i] );
+            }
         }
 
         return result;
@@ -204,13 +204,17 @@ class BreakPointMap
         });
         for( let i = bps.length-1; i >= 0; i-- )
         {
-            if( bps[i] == null )
+            if( bps[i] === null )
+            {
                 bps.splice(i,1);
+            }
         }
 
         // Reset IDs
         for( let i = 0; i < bps.length; i++ )
+        {
             bps[i].dukIdx = i;
+        }
     }
 
     addBreakpoints( remList:DukBreakPoint[] ):void
@@ -220,7 +224,9 @@ class BreakPointMap
 
         // Reset IDs
         for( let i = 0; i < bps.length; i++ )
+        {
             bps[i].dukIdx = i;
+        }
     }
 }
 
@@ -253,7 +259,7 @@ class SourceFile
         {
             let pos = this.srcMap.originalPositionFor( line, 0, Bias.LEAST_UPPER_BOUND );
 
-            if( pos && pos.line != null )
+            if( pos && pos.line !== null )
             {
                 return {
                     path     : pos.source,
@@ -277,7 +283,7 @@ class SourceFile
         {
             let pos = this.srcMap.generatedPositionFor( absSourcePath, line, 0, Bias.LEAST_UPPER_BOUND );
 
-            if( pos && pos.line != null )
+            if( pos && pos.line !== null )
             {
                 return {
                     path     : this.path,
@@ -448,8 +454,10 @@ export class DukDebugSession extends DebugSession
         // Status
         this._dukProto.on( DukEvent[DukEvent.nfy_status], ( status:DukStatusNotification ) => {
 
-            if( status.state == DukStatusState.Paused )
+            if( status.state === DukStatusState.Paused )
+            {
                 this.dbgLog( "Status Notification: PAUSE" );
+            }
 
             this.processStatus( status );
         });
@@ -477,9 +485,9 @@ export class DukDebugSession extends DebugSession
         this._dukProto.on( DukEvent[DukEvent.nfy_throw], ( e:DukThrowNotification ) => {
             this._expectingBreak = "Exception";
 
-            var sendEvent = function () {
-                var source: Source = new Source(e.fileName, Path.resolve(this._outDir, e.fileName));
-                var outputEventOptions = {
+            const sendEvent = function () {
+                const source: Source = new Source(e.fileName, Path.resolve(this._outDir, e.fileName));
+                const outputEventOptions = {
                     source: source,
                     line: e.lineNumber,
                     column: 1,
@@ -488,16 +496,16 @@ export class DukDebugSession extends DebugSession
             }.bind(this);
 
             if (this._sourceMaps) {
-                var sourceMap: SourceMap = this._sourceMaps.FindSourceToGeneratedMapping(Path.resolve(this._outDir, e.fileName));
+                const sourceMap: SourceMap = this._sourceMaps.FindSourceToGeneratedMapping(Path.resolve(this._outDir, e.fileName));
                 if (sourceMap && sourceMap._loading) {
                     sourceMap._loading.then(() => {
-                        var mappingResult: MappingResult = this._sourceMaps.MapToSource(Path.resolve(this._outDir, e.fileName), e.lineNumber, 0);
+                        const mappingResult: MappingResult = this._sourceMaps.MapToSource(Path.resolve(this._outDir, e.fileName), e.lineNumber, 0);
                         if (!mappingResult) {
                             sendEvent();
                             return;
                         }
-                        var source: Source = new Source(e.fileName, mappingResult.path);
-                        var outputEventOptions = {
+                        const source: Source = new Source(e.fileName, mappingResult.path);
+                        const outputEventOptions = {
                             source: source,
                             line: mappingResult.line,
                             column: mappingResult.column,
@@ -538,7 +546,7 @@ export class DukDebugSession extends DebugSession
 
                 this.logToClient( `Protocol ID: ${version.id}\n` );
 
-                if( version.major == 2 || ( version.major == 1 && version.minor >= 5 ) )
+                if( version.major === 2 || ( version.major === 1 && version.minor >= 5 ) )
                 {
                     this.initDukDbgProtocol( conn, buf );
                     this.finalizeInit( response );
@@ -568,7 +576,9 @@ export class DukDebugSession extends DebugSession
         this.dbgLog( "Finalized Initialization." );
 
         if( this._args.sourceMaps )
+        {
             this._sourceMaps = new SourceMaps( this._outDir );
+        }
 
         // Make sure that any breakpoints that were left set in
         // case of a broken connection are cleared
@@ -601,7 +611,7 @@ export class DukDebugSession extends DebugSession
     private processStatus( status:DukStatusNotification ) : void
     {
         // Pause/Unpause
-        if( status.state == DukStatusState.Paused )
+        if( status.state === DukStatusState.Paused )
         {
             // Set stopReason to 'breakpoint' if there's a breakpoint in the stop location
             let sourceFile:SourceFile = this.mapSourceFile( status.filename );
@@ -613,7 +623,9 @@ export class DukDebugSession extends DebugSession
                 let bp   = this._breakpoints.find( pos.fileName, pos.line );
 
                 if( bp )
+                {
                     this._expectingBreak = "breakpoint";
+                }
             }
 
             this._dbgState.reset();
@@ -697,7 +709,7 @@ export class DukDebugSession extends DebugSession
 
         const TIMEOUT_MS:number = 2000;
 
-        var doDisconnect = () => {
+        const doDisconnect = () => {
 
             clearTimeout( timeoutID );
             this._dukProto.disconnect( "Client disconnected." );
@@ -705,7 +717,7 @@ export class DukDebugSession extends DebugSession
             this.sendResponse( response );
         };
 
-        var timeoutID:NodeJS.Timer = setTimeout( () =>{
+        const timeoutID:NodeJS.Timer = setTimeout( () =>{
 
             this.dbgLog( "Detach request took too long. Forcefully disconnecting." );
             doDisconnect();
@@ -721,7 +733,7 @@ export class DukDebugSession extends DebugSession
         .then( () => {
 
             // At this point the remote socket may have been closed.
-            var isConnected = this._dukProto.isConnected;
+            const isConnected = this._dukProto.isConnected;
 
             ( ( isConnected && this._dukProto.requestDetach()) || Promise.resolve() )
             .catch( () => {} )
@@ -755,20 +767,26 @@ export class DukDebugSession extends DebugSession
 
         // Get breakpoints to add
         inBreaks.forEach( a => {
-            if( ArrayX.firstOrNull( fileBPs, b => a.line === b.line ) == null )
+            if( ArrayX.firstOrNull( fileBPs, b => a.line === b.line ) === null )
+            {
                 addBPs.push( new DukBreakPoint( filePath, a.line ) );
+            }
         });
 
         // Get breakpoints to remove
         fileBPs.forEach( a => {
-            if( ArrayX.firstOrNull( inBreaks, b => a.line === b.line ) == null )
+            if( ArrayX.firstOrNull( inBreaks, b => a.line === b.line ) === null )
+            {
                 remBPs.push( a );
+            }
         });
 
         // Get breakpoints that will persist
         fileBPs.forEach( a => {
             if( !ArrayX.firstOrNull( remBPs, b => a.line === b.line ) )
+            {
                 persistBPs.push( a );
+            }
         });
 
         // Prepare to remove and add breakpoints
@@ -803,7 +821,9 @@ export class DukDebugSession extends DebugSession
         doRemoveBreakpoints = ( i:number ) =>
         {
             if( i >= remBPs.length )
+            {
                 return Promise.resolve();
+            }
 
             let bp           :DukBreakPoint = remBPs[i];
 
@@ -824,7 +844,9 @@ export class DukDebugSession extends DebugSession
         doAddBreakpoints = ( i:number ) =>
         {
             if( i >= addBPs.length )
+            {
                 return Promise.resolve();
+            }
 
             let bp           :DukBreakPoint = addBPs[i];
             let line         :number        = bp.line;
@@ -841,7 +863,9 @@ export class DukDebugSession extends DebugSession
                     line = pos.line;
                 }
                 else
+                {
                     generatedName = this.getSourceNameByPath( args.source.path ) || args.source.name;
+                }
 
                 if( !generatedName )
                 {
@@ -877,7 +901,9 @@ export class DukDebugSession extends DebugSession
 
             let outBreaks = new Array<Breakpoint>( addedBPs.length );
             for( let i = 0; i < addedBPs.length; i++ )
+            {
                 outBreaks[i] = new Breakpoint( true, addedBPs[i].line)
+            }
 
             response.body = { breakpoints: outBreaks };
             this.sendResponse( response );
@@ -1007,9 +1033,9 @@ export class DukDebugSession extends DebugSession
     {
         this.dbgLog( "[FE] stackTraceRequest" );
 
-        var dukframes  = new Array<DukStackFrame>();
+        const dukframes  = new Array<DukStackFrame>();
 
-        var doRespond = () => {
+        const doRespond = () => {
 
             // Publish Stack Frames
             let frames = [];
@@ -1024,10 +1050,12 @@ export class DukDebugSession extends DebugSession
                 let src    :Source     = null;
 
                 if( srcFile )
+                {
                     src = new Source( frame.fileName, frame.filePath, 0 );
+                }
 
-                let klsName  = frame.klass    == "" ? "" : frame.klass + ".";
-                let funcName = frame.funcName == "" ? "(anonymous function)" : frame.funcName + "()";
+                let klsName  = frame.klass    === "" ? "" : frame.klass + ".";
+                let funcName = frame.funcName === "" ? "(anonymous function)" : frame.funcName + "()";
 
                 //i: number, nm: string, src: Source, ln: number, col: number
                 frames[i] = new StackFrame( frame.handle,
@@ -1039,7 +1067,7 @@ export class DukDebugSession extends DebugSession
             this.sendResponse( response );
         };
 
-        var doApplyConstructors = ( index:number ) => {
+        const doApplyConstructors = ( index:number ) => {
 
             if( index >= dukframes.length )
             {
@@ -1106,18 +1134,22 @@ export class DukDebugSession extends DebugSession
         this.dbgLog( "[FE] scopesRequest" );
 
         if( !this._args.isMusashi )
+        {
             this.scopeRequestForLocals( args.frameId, response, args );
+        }
         else
+        {
             this.scopeRequestForMultiple( args.frameId, response, args );
+        }
     }
 
     //-----------------------------------------------------------
     protected variablesRequest( response:DebugProtocol.VariablesResponse, args:DebugProtocol.VariablesArguments ):void
     {
         this.dbgLog( "[FE] variablesRequest" );
-        assert( args.variablesReference != 0 );
+        assert( args.variablesReference !== 0 );
 
-        var properties = this._dbgState.varHandles.get( args.variablesReference );
+        const properties = this._dbgState.varHandles.get( args.variablesReference );
 
         if( !properties )
         {
@@ -1130,14 +1162,14 @@ export class DukDebugSession extends DebugSession
             // and perhaps cancel any pending if the state changed/cleared
         }
 
-        var scope      = properties.scope;
-        var stackFrame = scope.stackFrame;
+        const scope      = properties.scope;
+        const stackFrame = scope.stackFrame;
 
-        var returnVars = ( vars:Variable[] ) => {
+        const returnVars = ( vars:Variable[] ) => {
 
             // Sort vars and return them.
             // We don't sort artificial properties
-            if( properties.type != PropertySetType.Artificials )
+            if( properties.type !== PropertySetType.Artificials )
             {
                 vars.sort( ( a, b ) => {
 
@@ -1147,20 +1179,36 @@ export class DukDebugSession extends DebugSession
                     let bIsNum:boolean = !isNaN(bNum);
 
                     if( !aIsNum && bIsNum )
+                    {
                         return -1;
+                    }
                     else if( aIsNum && !bIsNum )
+                    {
                         return 1;
+                    }
                     else if( aIsNum && bIsNum )
                     {
                         return aNum < bNum ? -1 :
                                aNum > bNum ? 1 : 0;
                     }
 
-                    if( a.name[0] === "_" ) return -1;
-                    if( b.name[0] === "_" ) return 1;
+                    if( a.name[0] === "_" )
+                    {
+                        return -1;
+                    }
+                    if( b.name[0] === "_" )
+                    {
+                        return 1;
+                    }
 
-                    if( a.name === "this" ) return -1;
-                    if( b.name === "this" ) return 1;
+                    if( a.name === "this" )
+                    {
+                        return -1;
+                    }
+                    if( b.name === "this" )
+                    {
+                        return 1;
+                    }
 
                     return a.name < b.name ? -1 :
                            a.name > b.name ? 1 : 0;
@@ -1172,7 +1220,7 @@ export class DukDebugSession extends DebugSession
         };
 
         // Determine the PropertySet's reference type
-        if( properties.type == PropertySetType.Scope )
+        if( properties.type === PropertySetType.Scope )
         {
             // Scope-level variables are resolved at the time of the Scope request
             // just return the variables array
@@ -1208,13 +1256,13 @@ export class DukDebugSession extends DebugSession
     {
         this.dbgLog( "[FE] setVariableRequest" );
 
-        var properties = this._dbgState.varHandles.get( args.variablesReference );
+        const properties = this._dbgState.varHandles.get( args.variablesReference );
         if( !properties )
         {
             this.requestFailedResponse( response, "Failed to find variable: " + args.variablesReference );
             return;
         }
-        var frame = properties.scope.stackFrame;
+        const frame = properties.scope.stackFrame;
         let variableName = this.getVariableName(args.name, properties);
         let expression = variableName + " = " + args.value;
 
@@ -1249,7 +1297,7 @@ export class DukDebugSession extends DebugSession
         this.dbgLog( "[FE] evaluateRequest" );
 
         let x = args.expression;
-        if( x.indexOf( "cmd:") == 0 )
+        if( x.indexOf( "cmd:") === 0 )
         {
             this.handleCommandLine( response, args );
         }
@@ -1313,7 +1361,7 @@ export class DukDebugSession extends DebugSession
         dukScope.handle = this._dbgState.scopes.create( dukScope );
         stackFrame.scopes = [ dukScope ];
 
-        var scopes:Scope[] = [];
+        const scopes:Scope[] = [];
 
         this._dukProto.requestLocalVariables( stackFrame.depth )
         .then( ( r:DukGetLocalsResponse ) => {
@@ -1326,7 +1374,9 @@ export class DukDebugSession extends DebugSession
             .then( (isGlobal:boolean ) => {
 
                 if( !isGlobal )
+                {
                     keys.unshift( "this" );
+                }
 
                 return this.expandScopeProperties( keys, dukScope )
                 .then( (props:PropertySet) => {
@@ -1366,7 +1416,7 @@ export class DukDebugSession extends DebugSession
         stackFrame.scopes = dukScopes;
 
         // Ask Duktape for the scope property keys for this stack frame
-        var scopes:Scope[] = [];
+        const scopes:Scope[] = [];
 
         this._dukProto.requestClosures( this._scopeMask, stackFrame.depth )
         .then( ( r:DukGetClosureResponse ) => {
@@ -1379,13 +1429,17 @@ export class DukDebugSession extends DebugSession
             .then( (isGlobal:boolean ) => {
 
                 if( !isGlobal )
+                {
                     r.local.unshift( "this" );
+                }
 
                 // Create a PropertySet from each scope
                 for( let i=0; i < names.length; i++ )
                 {
-                    if( keys[i].length == 0 )
+                    if( keys[i].length === 0 )
+                    {
                         continue;
+                    }
 
                     propPromises.push( this.expandScopeProperties( keys[i], dukScopes[i] ) );
                 }
@@ -1396,10 +1450,13 @@ export class DukDebugSession extends DebugSession
                     .then( (results:PropertySet[]) => {
 
                         for( let i=0; i < results.length; i++ )
-                            scopes.push( new Scope( results[i].scope.name,
-                                         results[i].handle,
-                                         results[i].scope.name == "Global" )
+                        {
+                            scopes.push(
+                                new Scope( results[i].scope.name,
+                                results[i].handle,
+                                results[i].scope.name === "Global" )
                             );
+                        }
                     });
                 }
             });
@@ -1429,7 +1486,9 @@ export class DukDebugSession extends DebugSession
 
         let requireArg = ( i:number ) => {
             if( i < 0 )
+            {
                 i = args.length-i;
+            }
 
             if( i < 0 || i >= args.length )
             {
@@ -1445,7 +1504,9 @@ export class DukDebugSession extends DebugSession
             let narg = Number(arg);
 
             if( !isNaN(narg) )
+            {
                 return narg === 0 ? false : true;
+            }
 
             return Boolean( arg.toLowerCase() );
         };
@@ -1494,9 +1555,13 @@ export class DukDebugSession extends DebugSession
                     let enabled = getBool( 0 );
                     this.logToClient( `Scope Mask: ${enabled?'true':'false'}\n` );
                     if( enabled )
+                    {
                         this._scopeMask |= DukScopeMask.Globals;
+                    }
                     else
+                    {
                         this._scopeMask &= (~DukScopeMask.Globals);
+                    }
                 break;
             }
         }
@@ -1519,7 +1584,7 @@ export class DukDebugSession extends DebugSession
     {
         this.dbgLog( "removeAllTargetBreakpoints" );
 
-        var numBreakpoints:number = 0;
+        let numBreakpoints:number = 0;
 
         return this._dukProto.requestListBreakpoints()
             .then( (r:DukListBreakResponse) => {
@@ -1527,9 +1592,11 @@ export class DukDebugSession extends DebugSession
                 numBreakpoints = r.breakpoints.length;
 
                 if( numBreakpoints < 1 )
+                {
                     return Promise.resolve([]);
+                }
 
-                var promises = new Array<Promise<any>>();
+                const promises = new Array<Promise<any>>();
                 promises.length = numBreakpoints;
 
                 numBreakpoints --; // Make it zero based
@@ -1537,7 +1604,9 @@ export class DukDebugSession extends DebugSession
                 // Duktape's breakpoints are tightly packed and index based,
                 // so just remove them each from the top down
                 for( let i=numBreakpoints; i >= 0; i-- )
+                {
                     promises[i] = this._dukProto.requestRemoveBreakpoint( numBreakpoints-- );
+                }
 
                 return Promise.all( promises );
             });
@@ -1552,7 +1621,7 @@ export class DukDebugSession extends DebugSession
     //-----------------------------------------------------------
     private expandScopeProperties( keys:string[], scope:DukScope ) : Promise<PropertySet>
     {
-        var propSet = new PropertySet( PropertySetType.Scope );
+        const propSet = new PropertySet( PropertySetType.Scope );
         propSet.handle    = this._dbgState.varHandles.create( propSet );
         propSet.scope     = scope;
         propSet.variables = [];
@@ -1563,7 +1632,9 @@ export class DukDebugSession extends DebugSession
         let evalPromises = new Array<Promise<any>>( keys.length );
 
         for( let i=0; i < keys.length; i++ )
+        {
             evalPromises[i] = this._dukProto.requestEval( keys[i], scope.stackFrame.depth );
+        }
 
         return Promise.all( evalPromises )
         .then( (results:DukEvalResponse[]) => {
@@ -1579,14 +1650,18 @@ export class DukDebugSession extends DebugSession
             for( let i = 0; i < results.length; i++ )
             {
                 if( !results[i].success )
+                {
                     continue;
+                }
 
                 pKeys.push( keys[i] );
                 pValues.push( results[i].result );
             }
 
             if( pKeys.length < 1 )
+            {
                 return propSet;
+            }
 
             return this.resolvePropertySetVariables( pKeys, pValues, propSet );
         })
@@ -1601,12 +1676,14 @@ export class DukDebugSession extends DebugSession
     //-----------------------------------------------------------
     private expandPropertySubset( propSet:PropertySet ) : Promise<Variable[]>
     {
-        if( propSet.type == PropertySetType.Object )
+        if( propSet.type === PropertySetType.Object )
         {
             // Check if this object's properties have been expanded already
             // ( if the variables property is not undefined, it's been expanded )
             if( propSet.variables )
+            {
                 return Promise.resolve( propSet.variables );
+            }
 
             propSet.variables = [];
 
@@ -1640,7 +1717,9 @@ export class DukDebugSession extends DebugSession
                 // Get object's 'own' properties
                 let maxOwnProps = r.maxPropDescRange;
                 if( maxOwnProps < 1 )
+                {
                     return propSet.variables;
+                }
 
                 return this._dukProto.requestGetObjPropDescRange( propSet.heapPtr, 0, maxOwnProps )
                 .then( ( r:DukGetObjPropDescRangeResponse ) => {
@@ -1651,7 +1730,9 @@ export class DukDebugSession extends DebugSession
                     for( let i = 0; i < r.properties.length; i++ )
                     {
                         if( r.properties[i].value !== undefined )
+                        {
                             props.push( r.properties[i] );
+                        }
                     }
 
                     // TODO: Need to place internal(I don't mean artificials) properties into their own node.
@@ -1665,7 +1746,7 @@ export class DukDebugSession extends DebugSession
                 });
             });
         }
-        else if( propSet.type == PropertySetType.Artificials )
+        else if( propSet.type === PropertySetType.Artificials )
         {
             return Promise.resolve( propSet.variables );
         }
@@ -1710,7 +1791,7 @@ export class DukDebugSession extends DebugSession
                     this._dukProto.requestInspectHeapObj( objPropSet.heapPtr )
                     .then( (r:DukGetHeapObjInfoResponse) => {
 
-                        var clsName:Duk.Property = ArrayX.firstOrNull( r.properties, v => v.key === "class_name" );
+                        const clsName:Duk.Property = ArrayX.firstOrNull( r.properties, v => v.key === "class_name" );
 
                         if( !clsName || clsName.value === <any>"Object" )
                         {
@@ -1759,7 +1840,9 @@ export class DukDebugSession extends DebugSession
         let objVars         :Variable[]     = [];   // Save object vars separately to set the value
                                                     //  when the toString promises return
         if( !propSet.variables )
+        {
             propSet.variables = [];
+        }
 
         // Get all the variables ready
         for( let i = 0; i < keys.length; i++ )
@@ -1813,10 +1896,10 @@ export class DukDebugSession extends DebugSession
 
                     // Try to obtain standard built-in object's dispaly name
                     // by querying the 'class_name' artificial property.
-                    var objPromise = this._dukProto.requestInspectHeapObj( objPropSet.heapPtr )
+                    const objPromise = this._dukProto.requestInspectHeapObj( objPropSet.heapPtr )
                     .then( (r:DukGetHeapObjInfoResponse) => {
 
-                        var clsName:Duk.Property = ArrayX.firstOrNull( r.properties, v => v.key === "class_name" );
+                        const clsName:Duk.Property = ArrayX.firstOrNull( r.properties, v => v.key === "class_name" );
 
                         if( !clsName || clsName.value === <any>"Object" )
                         {
@@ -1856,7 +1939,7 @@ export class DukDebugSession extends DebugSession
         return Promise.all( objClassPromises )
         .then( () => {
 
-            // Set the object var's display value to the 'toString' result
+            // Set the object const's display value to the 'toString' result
             return Promise.all( toStrPromises )
             .then( (toStrResults:string[]) => {
 
@@ -1904,7 +1987,9 @@ export class DukDebugSession extends DebugSession
                         for( let i = 0; i < ctorNameResp.length; i++ )
                         {
                             if( ctorNameResp[i].success )
+                            {
                                 ctorVars[i].value = <string>ctorNameResp[i].result;
+                            }
                         }
 
                         return Promise.resolve( propSet );
@@ -1932,7 +2017,9 @@ export class DukDebugSession extends DebugSession
         .then( isGlobal => {
 
             if( isGlobal )
+            {
                 return  "";
+            }
 
             // Not global object, try to get the constructor name
             return this._dukProto.requestEval( exp, stackDepth )
@@ -2001,7 +2088,9 @@ export class DukDebugSession extends DebugSession
 
                 let r = <DukEvalResponse>resp;
                 if( !r.success )
+                {
                     return Promise.reject( "failed" );
+                }
                 else
                 {
                     let isglob = <string>r.result === "[object global]" ? true : false;
@@ -2017,7 +2106,9 @@ export class DukDebugSession extends DebugSession
     private mapSourceFile( name:string ) : SourceFile
     {
         if( !name )
+        {
             return null;
+        }
 
         name = this.normPath( name );
 
@@ -2027,18 +2118,26 @@ export class DukDebugSession extends DebugSession
         for( let k in sources )
         {
             let val:SourceFile = sources[k];
-            if( val.name == name )
+            if( val.name === name )
+            {
                 return val;
+            }
         }
 
         let fpath;
         if( this._args.sourceMaps )
+        {
             fpath = this.normPath( Path.join( this._outDir, name ) );
+        }
         else
+        {
             fpath = this.normPath( Path.join( this._sourceRoot, name ) );
+        }
 
         if( !FS.existsSync( fpath ) )
+        {
             return null;
+        }
 
         let src:SourceFile = new SourceFile();
         src.id   = this._nextSourceID ++;
@@ -2094,13 +2193,17 @@ export class DukDebugSession extends DebugSession
         let pathUnderRoot = Path.dirname( this.getSourceNameByPath( path ) || "" );
 
         if( !this._sourceMaps )
+        {
             return this.mapSourceFile( Path.join( pathUnderRoot, name ) );
+        }
 
         let src2gen = this._sourceToGen;
 
         // Attempt a reverse lookup first
         if( src2gen[path] )
+        {
             return src2gen[path];
+        }
 
         let src:SourceFile = null;
 
@@ -2110,7 +2213,7 @@ export class DukDebugSession extends DebugSession
         const scanDir = ( dirPath:string, rootPath:string ) => {
 
             // In case the directory doesn't exsist
-            var files:string[];
+            let files:string[];
             try { files = FS.readdirSync( dirPath ); }
             catch ( err ) {
                 return;
@@ -2123,18 +2226,26 @@ export class DukDebugSession extends DebugSession
             {
                 let f:string = files[i];
 
-                var stat = FS.lstatSync( Path.join( dirPath, f ) );
+                const stat = FS.lstatSync( Path.join( dirPath, f ) );
                 if( stat.isDirectory() )        // Ignore dirs, shallow search
+                {
                     continue;
+                }
 
-                var candidate = this.mapSourceFile( Path.join( rootPath, f ) );
-                if (candidate.name == Path.join( pathUnderRoot, name ) )
+                const candidate = this.mapSourceFile( Path.join( rootPath, f ) );
+                if (candidate.name === Path.join( pathUnderRoot, name ) )
+                {
                     return candidate;
+                }
                 if (!candidate.srcMap)
+                {
                     continue;
-                for (var candidateFile of candidate.srcMap._sources) {
-                    if (candidateFile && Path.resolve(this._outDir, candidateFile) == path)
+                }
+                for (const candidateFile of candidate.srcMap._sources) {
+                    if (candidateFile && Path.resolve(this._outDir, candidateFile) === path)
+                    {
                         return candidate;
+                    }
                 }
             }
         };
@@ -2158,7 +2269,9 @@ export class DukDebugSession extends DebugSession
     private checkForSourceMap( src:SourceFile )
     {
         if( !this._args.sourceMaps )
+        {
             return;
+        }
 
         src.srcMap     = this._sourceMaps.MapPathFromSource( src.path );
         src.srcMapPath = src.srcMap.generatedPath();
@@ -2169,8 +2282,10 @@ export class DukDebugSession extends DebugSession
     {
         fpath = this.normPath( fpath );
 
-        if( fpath.indexOf( this._sourceRoot ) != 0 )
+        if( fpath.indexOf( this._sourceRoot ) !== 0 )
+        {
             return undefined;
+        }
 
         return fpath.substr( this._sourceRoot.length+1 );
     }
@@ -2189,7 +2304,9 @@ export class DukDebugSession extends DebugSession
     private normPath( fpath:string ) : string
     {
         if( !fpath )
+        {
             fpath = "";
+        }
 
         fpath = Path.normalize( fpath );
         fpath = fpath.replace(/\\/g, '/');
@@ -2199,7 +2316,7 @@ export class DukDebugSession extends DebugSession
     //-----------------------------------------------------------
     private logToClient( msg:string, category?:string, outputEventOptions?:object ) : void
     {
-        var outputEvent = new OutputEvent( msg, category );
+        const outputEvent = new OutputEvent( msg, category );
         Object.assign(outputEvent.body, outputEventOptions);
         this.sendEvent( outputEvent );
         console.log( msg );
@@ -2211,10 +2328,14 @@ export class DukDebugSession extends DebugSession
         if( this._dbgLog && msg && msg.length > 0 )
         {
             // Workaround for #11: https://github.com/harold-b/vscode-duktape-debug/issues/11
-            var buf = new Buffer( msg );
-                for( var i=0, len=buf.length; i < len; i++ )
+            const buf = new Buffer( msg );
+                for( let i=0, len=buf.length; i < len; i++ )
+                {
                     if( buf[i] > 0x7F )
+                    {
                         buf[i] = 0x3F;
+                    }
+                }
 
             msg = buf.toString( 'utf8' );
 

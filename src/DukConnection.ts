@@ -43,7 +43,7 @@ export class DukConnection extends EE.EventEmitter
     public static connect( ip:string, port:number, timeoutMS:number = 5000,
                            dbgLog?:( msg:string ) => void ):DukConnection
     {
-        var con = new DukConnection();
+        const con = new DukConnection();
         con.dbgLog = dbgLog || <any>(() => {});
         con._connect( ip, port, timeoutMS );
 
@@ -53,7 +53,7 @@ export class DukConnection extends EE.EventEmitter
     //-----------------------------------------------------------
     private _connect( ip:string, port:number, timeoutMS:number ):void
     {
-        var sock = new Net.Socket();
+        const sock = new Net.Socket();
 
         this.log( `Establishing connection with Duktape at ${ip}:${port}` );
 
@@ -79,12 +79,12 @@ export class DukConnection extends EE.EventEmitter
             sock.setTimeout( 0 );
 
             // Start listening for data
-            var inBuf :Buffer = new Buffer( 2048 );
-            var inSize:number = 0;
+            const inBuf :Buffer = new Buffer( 2048 );
+            let inSize:number = 0;
 
-            var onData = ( data:Buffer ) =>
+            const onData = ( data:Buffer ) =>
             {
-                var rem = inBuf.length - inSize;
+                const rem = inBuf.length - inSize;
 
                 if( rem < 1 )
                 {
@@ -94,7 +94,7 @@ export class DukConnection extends EE.EventEmitter
                 }
 
                 // Fill in buffer with as much data as we can
-                var bytesToCopy = rem < data.length ? rem : data.length;
+                const bytesToCopy = rem < data.length ? rem : data.length;
                 data.copy( inBuf, inSize, 0, bytesToCopy );
                 inSize += bytesToCopy;
 
@@ -102,17 +102,18 @@ export class DukConnection extends EE.EventEmitter
                 for( let i = 0; i < inSize; i++ )
                 {
                     // Find first new line character
-                    if( inBuf[i] != 0x0A )
+                    if( inBuf[i] !== 0x0A )
+                    {
                         continue;
+                    }
 
                     let verBuffer = new Buffer( i );
                     inBuf.copy( verBuffer, 0, 0, i );
 
-                    var idString = verBuffer.toString( "utf8" );
+                    const idString = verBuffer.toString( "utf8" );
                     this.dbgLog( "Protocol ID: " + idString );
 
-                    var version:DukVersion;
-
+                    let version:DukVersion;
                     // Parse the protocol version
                     // See: https://github.com/svaarala/duktape/blob/master/doc/debugger.rst#version-identification
                     try {
@@ -141,14 +142,18 @@ export class DukConnection extends EE.EventEmitter
                     sock.removeListener( "data", onData );
 
                     // Copy any remaining bytes received and hand them over to the user
-                    let inRem    = inSize - i-1;
-                    let dataRem  = data.length - bytesToCopy;
+                    const inRem    = inSize - i-1;
+                    const dataRem  = data.length - bytesToCopy;
 
-                    let remBuf = new Buffer( inRem + dataRem );
+                    const remBuf = new Buffer( inRem + dataRem );
                     if( inRem > 0 )
+                    {
                         inBuf.copy( remBuf, 0, i+1, inSize );
+                    }
                     if( dataRem > 0 )
+                    {
                         data.copy( remBuf, inRem, bytesToCopy, dataRem );
+                    }
 
                     // Emit connected event
                     this.onConnected( remBuf, version );

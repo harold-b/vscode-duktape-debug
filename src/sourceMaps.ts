@@ -59,11 +59,13 @@ export class SourceMaps implements ISourceMaps {
 		this._generatedCodeDirectory = generatedCodeDirectory;
 	}
 
-	public MapPathFromSource(pathToSource: string):SourceMap 
+	public MapPathFromSource(pathToSource: string):SourceMap
     {
-		var map = this.FindSourceToGeneratedMapping(pathToSource);
+		const map = this.FindSourceToGeneratedMapping(pathToSource);
 		if (map)
+		{
 			return map;
+		}
 		return null;
 	}
 
@@ -71,7 +73,7 @@ export class SourceMaps implements ISourceMaps {
     {
 		const map = this.FindSourceToGeneratedMapping(pathToSource);
 		if (map) {
-            
+
 			const mr = map.generatedPositionFor(pathToSource, line, column, bias);
 			if (mr && typeof mr.line === 'number') {
 				return {
@@ -86,10 +88,10 @@ export class SourceMaps implements ISourceMaps {
 
 	public MapToSource(pathToGenerated: string, line: number, column: number, bias?: Bias): MappingResult
     {
-        
+
 		const map = this._findGeneratedToSourceMapping(pathToGenerated);
 		if (map) {
-            
+
 			const mr = map.originalPositionFor(line, column, bias);
 			if (mr && mr.source) {
 				return {
@@ -319,7 +321,7 @@ export class SourceMaps implements ISourceMaps {
 	}
 
 	private _registerSourceMap(map: SourceMap): SourceMap {
-		var gp = map.generatedPath();
+		const gp = map.generatedPath();
 		if (gp) {
 			this._generatedToSourceMaps[gp] = map;
 		}
@@ -474,7 +476,7 @@ export class SourceMap {
 			return null;
 		}
 
-		var needle = {
+		const needle = {
 			line: line,
 			column: column,
 			bias: bias || Bias.LEAST_UPPER_BOUND
