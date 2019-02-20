@@ -34,7 +34,7 @@ export class DukConnection extends EE.EventEmitter
     private dbgLog: ( msg:string ) => void;
 
     //-----------------------------------------------------------
-    constructor()
+    private constructor()
     {
         super();
     }
@@ -56,7 +56,7 @@ export class DukConnection extends EE.EventEmitter
         var sock = new Net.Socket();
 
         this.log( `Establishing connection with Duktape at ${ip}:${port}` );
-        
+
         sock.setTimeout( timeoutMS, () => {
             this.dbgLog( `Connection timed out.` );
             this.onError( new Error("Connection timed out." ) );
@@ -92,7 +92,7 @@ export class DukConnection extends EE.EventEmitter
                     this.onError( new Error( "Parse error (version identification too long), dropping connection" ) );
                     return;
                 }
-                
+
                 // Fill in buffer with as much data as we can
                 var bytesToCopy = rem < data.length ? rem : data.length;
                 data.copy( inBuf, inSize, 0, bytesToCopy );
@@ -104,13 +104,13 @@ export class DukConnection extends EE.EventEmitter
                     // Find first new line character
                     if( inBuf[i] != 0x0A )
                         continue;
-                    
+
                     let verBuffer = new Buffer( i );
                     inBuf.copy( verBuffer, 0, 0, i );
-                    
+
                     var idString = verBuffer.toString( "utf8" );
                     this.dbgLog( "Protocol ID: " + idString );
-                    
+
                     var version:DukVersion;
 
                     // Parse the protocol version
@@ -119,7 +119,7 @@ export class DukConnection extends EE.EventEmitter
 
                         let split        = idString.split( ' ' );
                         const dukVersion = Number( split[1] );
-                        
+
                         version = {
                             id          : idString,
                             proto       : Number( split[0] ),
@@ -137,7 +137,7 @@ export class DukConnection extends EE.EventEmitter
                         this.onError( new Error( `Error validating protocol version: ${err}` ) );
                         return;
                     }
-                    
+
                     sock.removeListener( "data", onData );
 
                     // Copy any remaining bytes received and hand them over to the user
@@ -149,13 +149,13 @@ export class DukConnection extends EE.EventEmitter
                         inBuf.copy( remBuf, 0, i+1, inSize );
                     if( dataRem > 0 )
                         data.copy( remBuf, inRem, bytesToCopy, dataRem );
-                    
+
                     // Emit connected event
                     this.onConnected( remBuf, version );
                     return;
                 }
 
-                // if we get here, and we didn't manage to 
+                // if we get here, and we didn't manage to
                 // read the whole buffer, then we've overflowed.
                 if( bytesToCopy < data.length )
                 {

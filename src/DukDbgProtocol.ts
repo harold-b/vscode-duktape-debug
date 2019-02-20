@@ -12,7 +12,7 @@ import * as assert  from "assert"   ;
 import * as os      from "os"       ;
 import * as Promise from "bluebird" ;
 import * as Duk     from "./DukBase";
-import { 
+import {
     DukConnection,
     DukVersion
 } from "./DukConnection"
@@ -209,27 +209,27 @@ export class DukResponse extends DukProtoMessage
 
 export class DukBasicInfoResponse extends DukResponse
 {
-    // REP <int: DUK_VERSION> <str: DUK_GIT_DESCRIBE> <str: target info> 
+    // REP <int: DUK_VERSION> <str: DUK_GIT_DESCRIBE> <str: target info>
     //     <int: endianness> <int: sizeof(void *)> EOM
     public version    :number;
     public gitDesc    :string;
     public targetInfo :string;
     public endianness :DukEndianness;
     public ptrSize    :number;
-    
+
     constructor( msg:DukDvalueMsg )
     {
         super( Duk.CmdType.BASICINFO );
-        
+
         if( msg.length != 7 )
             throw new Error( "Invalid 'BasicInfo' response message." );
-        
+
         this.version    = <number>msg[1].value;
         this.gitDesc    = <string>msg[2].value;
         this.targetInfo = <string>msg[3].value;
         this.endianness = <DukEndianness>msg[4].value;
         this.ptrSize    = <number>msg[5].value;
-        
+
         if( this.endianness < DukEndianness.Little ||
             this.endianness > DukEndianness.Big )
                 throw new Error( "Invalid endianness" );
@@ -410,18 +410,18 @@ export class DukGetHeapObjInfoResponse extends DukResponse
             // If it's ann accessor, we must parse 2 values
             if( prop.flags & Duk.PropDescFlag.ATTR_ACCESSOR )
                 prop.value = <any>[ prop.value, <any>msg[i++].value];
-            
+
             this.properties.push( prop );
         }
     }
-    
+
     // Returns the maximum number of properties 'own'
     // the object my have. The object is not guaranteed
     // to have this many properties, but might have less or none.
     // We obtain this by obtaining how many properties the
     // entry part and the array part can contain.
     // We do this by examining the "e_next" and a_size" artificial properties.
-    // We add them both and that is our maximum possible number of properties 
+    // We add them both and that is our maximum possible number of properties
     // that the object may have.
     // See the following docs:
     // https://github.com/svaarala/duktape/blob/master/doc/debugger.rst
@@ -433,7 +433,7 @@ export class DukGetHeapObjInfoResponse extends DukResponse
         for( let i = 0; i < this.properties.length; i++ )
         {
             if( this.properties[i].key == "e_next" ) {
-                e_next = this.properties[i]; 
+                e_next = this.properties[i];
                 break;
             }
         }
@@ -441,7 +441,7 @@ export class DukGetHeapObjInfoResponse extends DukResponse
         for( let i = 0; i < this.properties.length; i++ )
         {
             if( this.properties[i].key == "a_size" ) {
-                a_size = this.properties[i]; 
+                a_size = this.properties[i];
                 break;
             }
         }
@@ -457,7 +457,7 @@ export class DukGetHeapObjInfoResponse extends DukResponse
         for( let i = 0; i < this.properties.length; i++ )
         {
             if( this.properties[i].key == "e_next" )
-                return <number>this.properties[i].value; 
+                return <number>this.properties[i].value;
         }
     }
 }
@@ -506,7 +506,7 @@ export class DukGetClosureResponse extends DukResponse
         super( Duk.CmdType.GETSCOPEKEYS );
 
         /// Scopes are denoted by an array of strings, then a 0 as the end marker of a scope.
-        /// The first scope is always the first scope, 
+        /// The first scope is always the first scope,
         /// the last scope on the list is always the global scope.
         /// If we have more than 2 scopes on the list, then any scope
         /// between the first and the last ( local and global ) are closure scopes.
@@ -544,7 +544,7 @@ export class DukGetClosureResponse extends DukResponse
                     this.closure.push( scopes[i][j] );
             }
         }
-       
+
     }
 }
 
@@ -802,7 +802,7 @@ export class DukDbgProtocol extends EE.EventEmitter
     private _version        :DukVersion;
 
     private log:Function;
-    
+
     public  info:DukBasicInfoResponse;
 
     private _emmitedDisonnected:boolean = false;
@@ -821,15 +821,15 @@ export class DukDbgProtocol extends EE.EventEmitter
         this._msg        = [];
         this._numDvalues = 0;
     }
-    
+
     //-----------------------------------------------------------
     public connect( conn:DukConnection, remainderBuf:Buffer ): void
-    {   
+    {
         this._conn    = conn;
         this._version = conn._protoVersion;
 
         this.reset();
-        
+
         this._conn._socket.on( "data", ( data ) => this.onReceiveData( data ) );
 
         this._conn.once( "error", ( err ) => {
@@ -838,8 +838,8 @@ export class DukDbgProtocol extends EE.EventEmitter
 
         this._conn.once( "disconnect", ( reason ) => {
             this.onDisconnected( reason );
-        }); 
-        
+        });
+
         if ( remainderBuf.length > 0 )
             this.onReceiveData(remainderBuf);
     }
@@ -877,7 +877,7 @@ export class DukDbgProtocol extends EE.EventEmitter
     {
         return this.sendSimpleRequest( Duk.CmdType.BASICINFO );
     }
-    
+
     //-----------------------------------------------------------
     public requestResume() : Promise<any>
     {
@@ -1048,7 +1048,7 @@ export class DukDbgProtocol extends EE.EventEmitter
         this._outBuf.writeInt( mask );
         this._outBuf.writeInt( stackDepth );
         this._outBuf.writeEOM();
-        
+
         return this.sendRequest( Duk.CmdType.GETSCOPEKEYS, this._outBuf.finish() );
     }
 
@@ -1121,8 +1121,6 @@ export class DukDbgProtocol extends EE.EventEmitter
     //-----------------------------------------------------------
     private onReceiveData( data:Buffer ) : void
     {
-        let buf = this._inBuf;
-
         if( !this.readData( data ) )
         {
             // Buffer overflow
@@ -1163,7 +1161,7 @@ export class DukDbgProtocol extends EE.EventEmitter
 
             let lopart = 0, hipart = 0;
 
-            // Pointers are stored in the byte order 
+            // Pointers are stored in the byte order
             // of the client, to facilitate inspection.
 
             if( size == 4 )
@@ -1500,7 +1498,7 @@ export class DukDbgProtocol extends EE.EventEmitter
                     mStr += `<${Duk.DValKind[dval.type]}: ${String(dval.value)}> `;
                 }
                 this.log( mStr );
-            }            
+            }
         }
 
         switch( ib )
@@ -1566,7 +1564,7 @@ export class DukDbgProtocol extends EE.EventEmitter
                 {
                     let code = <number>msg[2].value;
                     let err  = <string>(msg.length > 4 ? msg[3].value : "");
-                    
+
                     let reason = `Target detached: ( ${code} )  ${err}`;
                     this.disconnect( reason );
                 }
@@ -1734,7 +1732,7 @@ export class DukDbgProtocol extends EE.EventEmitter
     {
         let cp = new Array( len );
 
-        // TODO@Harold : I think this reads only ascii characters, since its 
+        // TODO@Harold : I think this reads only ascii characters, since its
         // treating each byte as a code point. Need to make it properly
 
         ///*

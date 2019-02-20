@@ -61,8 +61,8 @@
     },
     "scripts": {
         "compile": "tsc -p ./src",
-		"tslint": "tslint ./src/**/*.ts",
-		"watch": "tsc -w -p ./src",
+        "tslint": "tslint ./src/**/*.ts",
+        "watch": "tsc -w -p ./src",
         "prepare": "node ./node_modules/gulp/bin/gulp.js build-release",
         "postinstall": "node ./node_modules/vscode/bin/install"
     },
