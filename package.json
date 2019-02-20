@@ -21,7 +21,7 @@
         "typescript"
     ],
     "engines": {
-        "vscode": "^1.9.0",
+        "vscode": "^1.30.0",
         "node": "^6.3.0"
     },
     "private": true,
@@ -60,12 +60,15 @@
         "vscode": "^1.1.26"
     },
     "scripts": {
+        "compile": "tsc -p ./src",
+		"tslint": "tslint ./src/**/*.ts",
+		"watch": "tsc -w -p ./src",
         "prepare": "node ./node_modules/gulp/bin/gulp.js build-release",
         "postinstall": "node ./node_modules/vscode/bin/install"
     },
     "main": "./out/extension.js",
     "activationEvents": [
-        "onCommand:duk-debug.provideInitialConfigurations"
+        "onDebug"
     ],
     "contributes": {
         "breakpoints": [
@@ -83,9 +86,8 @@
             {
                 "type": "duk",
                 "label": "Duktape JS",
-                "program": "./out/DukDebugger.js",
+                "program": "./out/debugAdapter.js",
                 "runtime": "node",
-                "initialConfigurations": "duk-debug.provideInitialConfigurations",
                 "enableBreakpointsFor": {
                     "languageIds": [
                         "javascript",
@@ -150,17 +152,31 @@
                         }
                     }
                 },
+                "initialConfigurations": [
+                    {
+                        "name": "Attach (duk)",
+                        "type": "duk",
+                        "request": "attach",
+                        "address": "localhost",
+                        "port": 9091,
+                        "localRoot": "${workspaceRoot}",
+                        "sourceMaps": false,
+                        "outDir": null,
+                        "stopOnEntry": false,
+                        "debugLog": false
+                    }
+                ],
                 "configurationSnippets": [
                     {
-                        "label": "Duktape Attach",
+                        "label": "Duktape: Attach",
                         "description": "Attach to a running duktape process.",
                         "body": {
-                            "name": "Attach",
+                            "name": "Attach (duk)",
                             "type": "duk",
                             "request": "attach",
                             "address": "localhost",
                             "port": 9091,
-                            "localRoot": "${workspaceRoot}",
+                            "localRoot": "^\"\\${workspaceRoot}\"",
                             "sourceMaps": false,
                             "outDir": null,
                             "stopOnEntry": false,

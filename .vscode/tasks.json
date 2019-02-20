@@ -2,41 +2,25 @@
     "version": "2.0.0",
     "command": "gulp",
     "isShellCommand": true,
-    "args": [
-    ],
-
+    "args": [],
     "tasks": [
         {
-            "label"       : "build",
-            "isBuildCommand" : true,
-            "problemMatcher" : "$tsc"
+            "label": "build",
+            "group": "build",
+            "problemMatcher": "$tsc"
         },
-
-        {
-            "label"       : "watch",
-            "isBuildCommand" : true,
-			"isWatching"     : true,
-            "problemMatcher" : {
-
-                "fileLocation": ["relative", "${workspaceRoot}"],
-                "pattern" : {
-
-                    "regexp" : "^(Error|Warning)\\s+(.*):(\\d+):(\\d+):\\s*(.*)$",
-                    "severity" : 1,
-                    "file"     : 2,
-                    "line"     : 3,
-                    "column"   : 4,
-                    "message"  : 5
-
-                }
-            }
-        },
-
-        {
-            "label"       : "lint",
-            "args"           : [],
-            "isBuildCommand" : false,
-            "showOutput"     : "always"
-        }
+		{
+			"type": "npm",
+			"script": "watch",
+			"problemMatcher": "$tsc-watch",
+			"isBackground": true,
+			"presentation": {
+				"reveal": "never"
+			},
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			}
+		}
     ]
 }

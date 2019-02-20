@@ -30,7 +30,7 @@
 			"type"        : "node",
 			"request"     : "launch",
 			"runtimeArgs" : [ "--nolazy" ],
-			"program"     : "${workspaceRoot}/src/DukDebugger.ts",
+			"program"     : "${workspaceRoot}/src/debugAdapter.ts",
 			"stopOnEntry" : false,
 			// The localhost host listening port.
 		    // This must correspond with the launch.json value in
@@ -38,9 +38,7 @@
 			"args"        : [ "--server=4711" ],
 			"sourceMaps"  : true,
 			"outFiles"    : [ "${workspaceRoot}/out/*.js"],
-			"cwd"         : "${workspaceRoot}",
-
-			"preLaunchTask"     : "build",
+			"cwd"         : "${workspaceRoot}"
 		},
 
 		{
@@ -57,7 +55,7 @@
 
             "outFiles": [ "${workspaceRoot}/out/**/*.js" ],
 
-			"preLaunchTask"     : "build",
+			"preLaunchTask": "npm: watch"
 		},
 
 		// Use this to debug the gulp build pipeline.

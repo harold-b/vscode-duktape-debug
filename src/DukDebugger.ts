@@ -1312,12 +1312,12 @@ export class DukDebugSession extends DebugSession
         };
         return getVariableNamePrefix(properties).concat(argName).join(".");
     }
-    
+
     //-----------------------------------------------------------
     protected setVariableRequest( response: DebugProtocol.SetVariableResponse, args:DebugProtocol.SetVariableArguments)
     {
         this.dbgLog( "[FE] setVariableRequest" );
-        
+
         var properties = this._dbgState.varHandles.get( args.variablesReference );
         if( !properties )
         {
@@ -1327,32 +1327,32 @@ export class DukDebugSession extends DebugSession
         var frame = properties.scope.stackFrame;
         let variableName = this.getVariableName(args.name, properties);
         let expression = variableName + " = " + args.value;
-        
+
         this._dukProto.requestEval( expression, frame.depth )
-        .then( resp => {       
+        .then( resp => {
             let r = <DukEvalResponse>resp;
             if( !r.success )
             {
-                this.requestFailedResponse( response, "Eval failed: " + r.result );    
+                this.requestFailedResponse( response, "Eval failed: " + r.result );
                 return;
             }
             else
             {
                 this.resolveObject(expression, r.result, frame.scopes[0]).then(
-                    (v) => 
+                    (v) =>
                 {
                     response.body = {
                         value: v.value,
                         variablesReference: v.variablesReference
                     };
-                    this.sendResponse( response );    
+                    this.sendResponse( response );
                 })
-            }   
+            }
         }).catch( err =>{
             this.requestFailedResponse( response, "Eval request failed: " + err );
         });
     }
-    
+
     //-----------------------------------------------------------
     protected evaluateRequest( response:DebugProtocol.EvaluateResponse, args:DebugProtocol.EvaluateArguments ):void
     {
@@ -2333,5 +2333,3 @@ export class DukDebugSession extends DebugSession
         }
     }
 }
-
-DebugSession.run( DukDebugSession );
