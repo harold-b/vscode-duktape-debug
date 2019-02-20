@@ -371,8 +371,6 @@ class PtrPropDict {  [key:string]:PropertySet };
 
 class DbgClientState
 {
-    public paused        :boolean;
-
     public ptrHandles   :PtrPropDict;            // Access to property sets via pointers
     public varHandles   :Handles<PropertySet>;   // Handles to property sets
     public stackFrames  :Handles<DukStackFrame>;
@@ -380,7 +378,6 @@ class DbgClientState
 
     public reset() : void
     {
-        this.paused         = false;
         this.ptrHandles     = new PtrPropDict();
         this.varHandles     = new Handles<PropertySet>();
         this.stackFrames    = new Handles<DukStackFrame>();
@@ -419,10 +416,6 @@ export class DukDebugSession extends DebugSession
     private _dukProto       :DukDbgProtocol;
 
     private _dbgState       :DbgClientState;
-    private _initResponse   :DebugProtocol.Response;
-
-    private _processStatus  :boolean;
-    private _initialStatus  :DukStatusNotification;
 
     private _expectingBreak    :string  = "debugger";
     private _expectingContinue :boolean = false;
@@ -458,14 +451,7 @@ export class DukDebugSession extends DebugSession
             if( status.state == DukStatusState.Paused )
                 this.dbgLog( "Status Notification: PAUSE" );
 
-            //this.dbgLog( "Status Notification: " +
-            //    (status.state == DukStatusState.Paused ? "pause" : "running" ) );
-
-            // If the status cannot be processed right now, store it for later
-            if( !this._processStatus )
-                this._initialStatus = status;
-            else
-                this.processStatus( status );
+            this.processStatus( status );
         });
 
         // Disconnect
@@ -538,16 +524,12 @@ export class DukDebugSession extends DebugSession
     //-----------------------------------------------------------
     private beginInit( response:DebugProtocol.Response ) : void
     {
-        this._initialStatus = null;
-        this._processStatus = false;
-
         // Attached to Debug Server
-        let conn:DukConnection;
         let args = <AttachRequestArguments>this._args;
 
         try {
             const tmOut = args.timeout === undefined ? 10000 : 0;
-            conn = DukConnection.connect( args.address, args.port, tmOut );
+            const conn = DukConnection.connect( args.address, args.port, tmOut );
 
             conn.once( "connected", ( buf:Buffer, version:DukVersion ) => {
 
@@ -555,8 +537,6 @@ export class DukDebugSession extends DebugSession
                 conn.removeAllListeners();
 
                 this.logToClient( `Protocol ID: ${version.id}\n` );
-
-                var proto:any;
 
                 if( version.major == 2 || ( version.major == 1 && version.minor >= 5 ) )
                 {
@@ -590,38 +570,29 @@ export class DukDebugSession extends DebugSession
         if( this._args.sourceMaps )
             this._sourceMaps = new SourceMaps( this._outDir );
 
-        this._dbgState.reset();
-        this._initResponse          = null;
-
-        // Allow processing of status messages, and if one arrived
-        // during initialization, then consider if we have to process it now
-        this._processStatus = true;
-        const isServerPaused = this._initialStatus && this._initialStatus.state == DukStatusState.Paused;
-
         // Make sure that any breakpoints that were left set in
         // case of a broken connection are cleared
         this.removeAllTargetBreakpoints().catch( () => {} )
         .then( () => {
+            // Let the front end know we're done initializing
+            this.sendResponse( response );
+            this.sendEvent( new InitializedEvent() );
 
             // Set initial paused state depending on the user configuration
-            // and any status messages we may have already received from the server
             if( this._args.stopOnEntry )
             {
-                // Only request a pause if we haven't got a pause status yet
-                if( !isServerPaused )
-                    this._dukProto.requestPause();
-                else
-                    this.processStatus( this._initialStatus );
+                this._dukProto.requestPause().then(() => {
+                    this.sendEvent( new StoppedEvent( "start", DukDebugSession.THREAD_ID ) );
+                });
             }
-            else if( isServerPaused )
+            else
             {
-                this._dukProto.requestResume();
+                this._dukProto.requestResume().then(() => {
+                    this.sendEvent( new ContinuedEvent( DukDebugSession.THREAD_ID, true) );
+                });
+
             }
         }).catch( () => {} );
-
-        // Let the front end know we're done initializing
-        this.sendResponse( response );
-        this.sendEvent( new InitializedEvent() );
     }
 
     //-----------------------------------------------------------
@@ -646,25 +617,12 @@ export class DukDebugSession extends DebugSession
             }
 
             this._dbgState.reset();
-            this._dbgState.paused = true;
             this.sendEvent( new StoppedEvent( this._expectingBreak, DukDebugSession.THREAD_ID ) );
             this._expectingBreak = "debugger";
         }
         else
         {
-            // Resume
-            //this._dbgState.reset();
-
-            if( this._dbgState.paused )
-            {
-                // NOTE: Not doing this because it seems to cause issues.
-                // it suddenly continues unexpectedly, even if calling this event
-                // in correct synchronized order.
-                //this.dbgLog( "Sending CONTINUE event to FE");
-                //this.sendEvent( new ContinuedEvent( DukDebugSession.THREAD_ID, true) );
-            }
-
-            this._dbgState.paused = false;
+            this.sendEvent( new ContinuedEvent( DukDebugSession.THREAD_ID, true) );
         }
     }
 
@@ -952,25 +910,11 @@ export class DukDebugSession extends DebugSession
     {
         this.dbgLog( "[FE] continueRequest" );
 
-        if( this._dbgState.paused )
-        {
-            this._dukProto.requestResume().then( ( val ) => {
-
-                // A status notification should follow shortly
-                //this.sendResponse( response );
-
-            }).catch( (err) => {
-
-                this.requestFailedResponse( response );
-            });
+        this._dukProto.requestResume().then( () => {
             this.sendResponse( response );
-        }
-        else
-        {
-            this.dbgLog( "Can't continue when not paused" );
-            this.requestFailedResponse( response, "Not paused." );
-            return;
-        }
+        }).catch( () => {
+            this.requestFailedResponse( response );
+        });
     }
 
     //-----------------------------------------------------------
@@ -979,23 +923,14 @@ export class DukDebugSession extends DebugSession
     {
         this.dbgLog( "[FE] nextRequest" );
 
-        if( !this._dbgState.paused )
-        {
-            this.dbgLog( "Can't step over when not paused" );
-            this.requestFailedResponse( response, "Not paused." );
-            return;
-        }
-
         this._expectingBreak = "step";
-        this._dukProto.requestStepOver().then( ( val ) => {
+        this._dukProto.requestStepOver().then( () => {
             // A status notification should follow shortly
-            //this.sendResponse( response );
+            this.sendResponse( response );
 
-        }).catch( (err) => {
-            //this.requestFailedResponse( response );
+        }).catch( () => {
+            this.requestFailedResponse( response );
         });
-
-        this.sendResponse( response );
     }
 
     //-----------------------------------------------------------
@@ -1004,23 +939,14 @@ export class DukDebugSession extends DebugSession
     {
         this.dbgLog( "[FE] stepInRequest" );
 
-        if( !this._dbgState.paused )
-        {
-            this.dbgLog( "Can't step into when not paused" );
-            this.requestFailedResponse( response, "Not paused." );
-            return;
-        }
-
         this._expectingBreak = "stepin";
-        this._dukProto.requestStepInto().then( ( val ) => {
+        this._dukProto.requestStepInto().then( () => {
             // A status notification should follow shortly
-            //this.sendResponse( response );
+            this.sendResponse( response );
 
-        }).catch( (err) => {
-            //this.requestFailedResponse( response );
+        }).catch( () => {
+            this.requestFailedResponse( response );
         });
-
-        this.sendResponse( response );
     }
 
     //-----------------------------------------------------------
@@ -1029,27 +955,14 @@ export class DukDebugSession extends DebugSession
     {
         this.dbgLog( "[FE] stepOutRequest" );
 
-        if( !this._dbgState.paused )
-        {
-            this.dbgLog( "Can't step out when not paused" );
-            this.requestFailedResponse( response, "Not paused." );
-            return;
-        }
-
         this._expectingBreak = "stepout";
-        this._dukProto.requestStepOut().then( ( val ) => {
+        this._dukProto.requestStepOut().then( () => {
             // A status notification should follow shortly
-            //this.sendResponse( response );
+            this.sendResponse( response );
 
-        }).catch( (err) => {
-            //this.requestFailedResponse( response );
+        }).catch( () => {
+            this.requestFailedResponse( response );
         });
-
-        // NOTE: This new version seems to cause an error randomly
-        // locking the UI if we send the response later on...
-        // So we send it immediately and just adopt the Server
-        // state when it responds with status messages.
-        this.sendResponse( response );
     }
 
     //-----------------------------------------------------------
@@ -1057,25 +970,12 @@ export class DukDebugSession extends DebugSession
     {
         this.dbgLog( "[FE] pauseRequest" );
 
-        if( !this._dbgState.paused )
-        {
-            this._expectingBreak = "pause";
-            this._dukProto.requestPause().then( ( val ) => {
-
-                // A status notification should follow shortly
-                //this.sendResponse( response );
-
-            }).catch( (err) => {
-                //this.requestFailedResponse( response, "Error pausing." );
-            });
-
+        this._expectingBreak = "pause";
+        this._dukProto.requestPause().then( () => {
             this.sendResponse( response );
-        }
-        else
-        {
-            this.dbgLog( "Can't paused when already paused." );
-            this.requestFailedResponse( response, "Already paused." );
-        }
+        }).catch( () => {
+            this.requestFailedResponse( response, "Error pausing." );
+        });
     }
 
     //-----------------------------------------------------------
@@ -1107,15 +1007,6 @@ export class DukDebugSession extends DebugSession
     {
         this.dbgLog( "[FE] stackTraceRequest" );
 
-        // Make sure we're paused
-        if( !this._dbgState.paused )
-        {
-            this.requestFailedResponse( response,
-                "Attempted to obtain stack trace while running." );
-            return;
-        }
-
-        var getCallStack;
         var dukframes  = new Array<DukStackFrame>();
 
         var doRespond = () => {
@@ -1213,7 +1104,6 @@ export class DukDebugSession extends DebugSession
     protected scopesRequest( response: DebugProtocol.ScopesResponse, args: DebugProtocol.ScopesArguments ):void
     {
         this.dbgLog( "[FE] scopesRequest" );
-        assert( this._dbgState.paused );
 
         if( !this._args.isMusashi )
             this.scopeRequestForLocals( args.frameId, response, args );
