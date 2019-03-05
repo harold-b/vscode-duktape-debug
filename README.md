@@ -41,7 +41,7 @@ Create a new launch.json configuration file and configure the address and port t
             "address"     : "localhost",
             "port"        : 9091,
             
-            "localRoot"   : "${workspaceRoot}",
+            "localRoots"  : [ "${workspaceRoot}" ],
             
             "sourceMaps"  : true,
             "outDir"      : "${workspaceRoot}/bin"

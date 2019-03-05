@@ -131,12 +131,15 @@
                                 "description": "Automatically stop program after launch.",
                                 "default": true
                             },
-                            "localRoot": {
+                            "localRoots": {
                                 "type": [
-                                    "string",
+                                    "array",
                                     "null"
                                 ],
-                                "description": "The local source root that corresponds to the 'remoteRoot'.",
+                                "items": {
+                                    "type": "string"
+                                },
+                                "description": "The local source root paths that correspond to the remote root paths.",
                                 "default": null
                             },
                             "debugLog": {
@@ -159,7 +162,9 @@
                         "request": "attach",
                         "address": "localhost",
                         "port": 9091,
-                        "localRoot": "${workspaceRoot}",
+                        "localRoots": [
+                            "${workspaceRoot}"
+                        ],
                         "sourceMaps": false,
                         "outDir": null,
                         "stopOnEntry": false,
@@ -176,7 +181,9 @@
                             "request": "attach",
                             "address": "localhost",
                             "port": 9091,
-                            "localRoot": "^\"\\${workspaceRoot}\"",
+                            "localRoots": [
+                                "^\"\\${workspaceRoot}\""
+                            ],
                             "sourceMaps": false,
                             "outDir": null,
                             "stopOnEntry": false,

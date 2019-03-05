@@ -104,7 +104,7 @@ export interface AttachRequestArguments extends DebugProtocol.AttachRequestArgum
     /** Node's root directory. */
     remoteRoot?: string;
     /** VS Code's root directory. */
-    localRoot?: string;
+    localRoots?: string[];
 }
 
 // Utitity
@@ -416,7 +416,7 @@ export class DukDebugSession extends DebugSession
 
     private _launchType     :LaunchType;
     private _targetProgram  :string;
-    private _sourceRoot     :string;
+    private _sourceRoots    :string[];
     private _outDir         :string;
     private _stopOnEntry    :boolean;
     private _dukProto       :DukDbgProtocol;
@@ -670,10 +670,10 @@ export class DukDebugSession extends DebugSession
     {
         this.dbgLog( "[FE] attachRequest" );
 
-        if( !args.localRoot || args.localRoot === "" )
+        if( !args.localRoots || args.localRoots.length === 0 )
         {
             this.sendErrorResponse( response, 0,
-                "Must specify a localRoot`" );
+                "Must specify `localRoots`" );
             return;
         }
 
@@ -686,7 +686,7 @@ export class DukDebugSession extends DebugSession
 
         this._args          = args;
         this._launchType    = LaunchType.Attach;
-        this._sourceRoot    = this.normPath( args.localRoot  );
+        this._sourceRoots   = args.localRoots.map(path => { return this.normPath( path ) });
         this._outDir        = this.normPath( args.outDir     );
         this._dbgLog        = args.debugLog || false;
 
@@ -2124,17 +2124,25 @@ export class DukDebugSession extends DebugSession
             }
         }
 
-        let fpath;
+        let fpath:string;
         if( this._args.sourceMaps )
         {
             fpath = this.normPath( Path.join( this._outDir, name ) );
         }
         else
         {
-            fpath = this.normPath( Path.join( this._sourceRoot, name ) );
+            for( let rpath of this._sourceRoots ) 
+            {
+                let candidatePath = this.normPath( Path.join( rpath, name ) );
+                if( FS.existsSync( candidatePath ) )
+                {
+                    fpath = candidatePath;
+                    break;
+                }
+            }
         }
 
-        if( !FS.existsSync( fpath ) )
+        if( !fpath || !FS.existsSync( fpath ) )
         {
             return null;
         }
@@ -2282,12 +2290,15 @@ export class DukDebugSession extends DebugSession
     {
         fpath = this.normPath( fpath );
 
-        if( fpath.indexOf( this._sourceRoot ) !== 0 )
+        for (let rpath of this._sourceRoots)
         {
-            return undefined;
+            if( fpath.indexOf( rpath ) === 0 )
+            {
+                return fpath.substr( rpath.length + 1 );
+            }
         }
 
-        return fpath.substr( this._sourceRoot.length+1 );
+        return undefined;
     }
 
     //-----------------------------------------------------------
