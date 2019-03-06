@@ -486,7 +486,10 @@ export class DukDebugSession extends DebugSession
             this._expectingBreak = "Exception";
 
             const sendEvent = function () {
-                const source: Source = new Source(e.fileName, Path.resolve(this._outDir, e.fileName));
+                const sourceFile: SourceFile = this.mapSourceFile( e.fileName );
+                const source: Source = sourceFile ?
+                    new Source( sourceFile.name, sourceFile.path ) :
+                    new Source( e.fileName, Path.resolve( this._outDir, e.fileName ) );
                 const outputEventOptions = {
                     source: source,
                     line: e.lineNumber,
