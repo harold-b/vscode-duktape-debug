@@ -104,6 +104,8 @@ export interface AttachRequestArguments extends DebugProtocol.AttachRequestArgum
     /** Node's root directory. */
     remoteRoot?: string;
     /** VS Code's root directory. */
+    localRoot?: string;
+    /** VS Code's root directories. */
     localRoots?: string[];
 }
 
@@ -673,10 +675,10 @@ export class DukDebugSession extends DebugSession
     {
         this.dbgLog( "[FE] attachRequest" );
 
-        if( !args.localRoots || args.localRoots.length === 0 )
+        if( ( !args.localRoot || args.localRoot === "" ) && ( !args.localRoots || args.localRoots.length === 0 ) )
         {
             this.sendErrorResponse( response, 0,
-                "Must specify `localRoots`" );
+                "Must specify `localRoot` or `localRoots`" );
             return;
         }
 
@@ -689,7 +691,16 @@ export class DukDebugSession extends DebugSession
 
         this._args          = args;
         this._launchType    = LaunchType.Attach;
-        this._sourceRoots   = args.localRoots.map(path => { return this.normPath( path ) });
+        this._sourceRoots   = new Array<string>();
+
+        if( args.localRoot ) {
+            this._sourceRoots = this._sourceRoots.concat( this.normPath( args.localRoot ) );
+        }
+
+        if( args.localRoots ) {
+            this._sourceRoots = this._sourceRoots.concat( args.localRoots.map( path => { return this.normPath( path ) } ) );
+        }
+
         this._outDir        = this.normPath( args.outDir     );
         this._dbgLog        = args.debugLog || false;
 

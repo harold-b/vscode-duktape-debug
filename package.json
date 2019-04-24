@@ -131,6 +131,14 @@
                                 "description": "Automatically stop program after launch.",
                                 "default": true
                             },
+                            "localRoot": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
+                                "description": "The local source root that corresponds to the remote root path.",
+                                "default": null
+                            },
                             "localRoots": {
                                 "type": [
                                     "array",
