@@ -2335,6 +2335,7 @@ export class DukDebugSession extends DebugSession
 
         fpath = Path.normalize( fpath );
         fpath = fpath.replace(/\\/g, '/');
+        fpath = fpath.replace(/^[A-Z]:\//, match => match.toLowerCase());
         return fpath;
     }
 
