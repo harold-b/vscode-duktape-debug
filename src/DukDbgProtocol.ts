@@ -288,7 +288,7 @@ export class DukGetCallStackResponse extends DukResponse
         let len = ( msg.length - 2 );
         if( len === 0 )
         {
-            this.callStack = new DukCallStackEntry[0];
+            this.callStack = new Array<DukCallStackEntry>();
         }
         else
         {

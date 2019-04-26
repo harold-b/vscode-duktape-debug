@@ -136,7 +136,18 @@
                                     "string",
                                     "null"
                                 ],
-                                "description": "The local source root that corresponds to the 'remoteRoot'.",
+                                "description": "The local source root that corresponds to the remote root path.",
+                                "default": null
+                            },
+                            "localRoots": {
+                                "type": [
+                                    "array",
+                                    "null"
+                                ],
+                                "items": {
+                                    "type": "string"
+                                },
+                                "description": "The local source root paths that correspond to the remote root paths.",
                                 "default": null
                             },
                             "debugLog": {
@@ -159,7 +170,9 @@
                         "request": "attach",
                         "address": "localhost",
                         "port": 9091,
-                        "localRoot": "${workspaceRoot}",
+                        "localRoots": [
+                            "${workspaceRoot}"
+                        ],
                         "sourceMaps": false,
                         "outDir": null,
                         "stopOnEntry": false,
@@ -176,7 +189,9 @@
                             "request": "attach",
                             "address": "localhost",
                             "port": 9091,
-                            "localRoot": "^\"\\${workspaceRoot}\"",
+                            "localRoots": [
+                                "^\"\\${workspaceRoot}\""
+                            ],
                             "sourceMaps": false,
                             "outDir": null,
                             "stopOnEntry": false,
