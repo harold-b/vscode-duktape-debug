@@ -1,18 +1,34 @@
+# Changelog
+
+## 0.5.0
+
+    - Support for multiple source roots (Thanks @lapitskyartem)
+    - Fix breakpoints race condition (Thanks @koush)
+    - Fix source map resolution
+    - Fix initialisation order
+    - Add ability to set variable through debugger
+    - Simplify debugging with compound launch task and DebugAdapterDescriptorFactory
+
 ## 0.4.1
+
     - Support for duktape v2.* in addtion to v.1.5+.
     - Support for files in subfolders (thanks @shaddockh). See: https://github.com/harold-b/vscode-duktape-debug/pull/21
     - Update to current extension vscode API. See: https://github.com/harold-b/vscode-duktape-debug/issues/19
 
 ## 0.2.13
+
     - Hotfix for github issues #10 & #11.
 
 ## 0.2.11
+
     - Updated documentation.
 
 ## 0.2.9
+
     - Fixed 64-bit pointers being written incorrectly. This would cause a crash in the target host.
 
 ## 0.2.8
+
     - Fixed sending empty eval expressions.
 
 ## 0.2.7
