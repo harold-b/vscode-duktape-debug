@@ -40,7 +40,7 @@
 			"outFiles"    : [ "${workspaceRoot}/out/*.js"],
 			"cwd"         : "${workspaceRoot}",
 
-			"preLaunchTask": "build"
+			"preLaunchTask": "npm: watch"
 		},
 
 		{
@@ -57,20 +57,7 @@
 
             "outFiles": [ "${workspaceRoot}/out/**/*.js" ],
 
-			"preLaunchTask": "build"
-		},
-
-		// Use this to debug the gulp build pipeline.
-		{
-			"name"        : "Debug Gulp Pipeline",
-			"type"        : "node",
-			"request" 	  : "launch",
-			"stopOnEntry" : false,
-			"program"     : "${workspaceRoot}/node_modules/gulp/bin/gulp.js",
-			//"program"     : "${workspaceRoot}/makeExtension.js",
-			"args"        : [ "build" ],
-			"cwd"         : "${workspaceRoot}",
-			"sourceMaps"  : false
+			"preLaunchTask": "npm: watch"
 		},
 	],
 

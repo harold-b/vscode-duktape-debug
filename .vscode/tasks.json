@@ -1,26 +1,21 @@
 {
     "version": "2.0.0",
-    "command": "gulp",
-    "isShellCommand": true,
-    "args": [],
     "tasks": [
         {
-            "label": "build",
-            "group": "build",
-            "problemMatcher": "$tsc"
-        },
-		{
-			"type": "npm",
-			"script": "watch",
-			"problemMatcher": "$tsc-watch",
-			"isBackground": true,
-			"presentation": {
-				"reveal": "never"
-			},
-			"group": {
-				"kind": "build",
-				"isDefault": true
-			}
-		}
+            "type": "npm",
+            "script": "watch",
+            "presentation": {
+                "echo": true,
+                "reveal": "never",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": false
+            },
+            "problemMatcher": [
+                "$ts-webpack"
+            ],
+            "isBackground": true
+        }
     ]
 }

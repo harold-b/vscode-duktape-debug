@@ -33,7 +33,7 @@
 
 ## 0.2.7
 
-    - 'stopOnEntry' works properly now. 
+    - 'stopOnEntry' works properly now.
 
 ## 0.2.6
 
