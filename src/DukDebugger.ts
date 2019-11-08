@@ -2264,7 +2264,7 @@ export class DukDebugSession extends DebugSession
                     continue;
                 }
                 for (const candidateFile of candidate.srcMap._sources) {
-                    if (candidateFile && Path.resolve(this._outDir, candidateFile) === path)
+                    if (candidateFile && this.normPath(Path.resolve(this._outDir, candidateFile)) === path)
                     {
                         return candidate;
                     }

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.1
+
+	- Hotfix for github issue #51.
+	https://github.com/harold-b/vscode-duktape-debug/issues/51
+
 ## 0.5.0
 
     - Support for multiple source roots (Thanks @lapitskyartem)
