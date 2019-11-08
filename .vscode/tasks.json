@@ -16,6 +16,12 @@
                 "$ts-webpack"
             ],
             "isBackground": true
+        },
+        {
+            "type": "npm",
+            "script": "compile",
+            "group": "build",
+            "problemMatcher": []
         }
     ]
 }

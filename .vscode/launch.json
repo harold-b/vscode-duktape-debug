@@ -37,9 +37,7 @@
 		    // the "duk" launch.json file.
 			"args"        : [ "--server=4711" ],
 			"sourceMaps"  : true,
-			"outFiles"    : [ "${workspaceRoot}/out/*.js"],
 			"cwd"         : "${workspaceRoot}",
-
 			"preLaunchTask": "npm: watch"
 		},
 
@@ -54,9 +52,6 @@
 			"args": [
 				"--extensionDevelopmentPath=${workspaceRoot}"
 			],
-
-            "outFiles": [ "${workspaceRoot}/out/**/*.js" ],
-
 			"preLaunchTask": "npm: watch"
 		},
 	],

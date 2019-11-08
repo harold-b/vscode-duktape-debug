@@ -38,6 +38,7 @@
         "VERSION"
     ],
     "dependencies": {
+        "acorn": "^6.1.1",
         "bluebird": "^3.5.3",
         "source-map": "^0.7.3",
         "vscode-debugadapter": "^1.33.0",
@@ -57,14 +58,17 @@
         "uglify-js": "^2.8.14",
         "vscode": "^1.1.26",
         "webpack": "^4.30.0",
-        "webpack-cli": "^3.3.1"
+        "webpack-cli": "^3.3.1",
+        "prettier": "^1.17.1"
     },
     "scripts": {
         "tslint": "tslint ./src/**/*.ts",
         "postinstall": "node ./node_modules/vscode/bin/install",
         "vscode:prepublish": "webpack --mode production",
         "compile": "webpack --mode none",
-        "watch": "webpack --mode none --watch"
+        "watch": "webpack --mode none --watch",
+        "format": "prettier --write \"**/*.{ts,tsx,js}\"",
+        "check-format": "prettier --list-different \"**/*.{ts,tsx,js}\""
     },
     "main": "./dist/extension",
     "activationEvents": [
