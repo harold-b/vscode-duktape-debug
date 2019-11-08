@@ -1,3 +1,3 @@
-import { DukDebugSession } from './DukDebugger';
+import { DukDebugSession } from "./DukDebugger";
 
-DukDebugSession.run( DukDebugSession );
+DukDebugSession.run(DukDebugSession);
