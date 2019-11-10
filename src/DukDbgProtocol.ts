@@ -5,10 +5,8 @@
 /// See: https://github.com/svaarala/duktape/blob/master/doc/debugger.rst
 ///      https://github.com/svaarala/duktape/blob/master/debugger/duk_debug.js
 
-import * as Net from "net";
 import * as EE from "events";
 import * as assert from "assert";
-import * as os from "os";
 import * as Promise from "bluebird";
 import * as Duk from "./DukBase";
 import { DukConnection, DukVersion } from "./DukConnection";
@@ -1576,14 +1574,18 @@ export class DukDbgProtocol extends EE.EventEmitter {
 
     //-----------------------------------------------------------
     private readData(data: Buffer): boolean {
-        let buf = this._inBuf;
         let available = data.length;
 
-        if (this._inBufSize + available > buf.length) {
-            return false;
+        if (this._inBufSize + available > this._inBuf.length) {
+            // Try 2 times the length, and add data length just so we
+            // can definitely fit the data
+            let newLength = (2 * this._inBuf.length) + available;
+            const largerBuffer = Buffer.alloc(newLength);
+            this._inBuf.copy(largerBuffer);
+            this._inBuf = largerBuffer;
         }
 
-        data.copy(buf, this._inBufSize, 0, available);
+        data.copy(this._inBuf, this._inBufSize, 0, available);
         this._inBufSize += available;
 
         return true;
