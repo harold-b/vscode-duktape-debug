@@ -473,14 +473,16 @@ export class DukDebugSession extends DebugSession {
 
             if (this._sourceMaps) {
                 const sourceMap: SourceMap = this._sourceMaps.FindSourceToGeneratedMapping(
-                    Path.resolve(this._outDir, e.fileName)
+                    Path.resolve(this._outDir, e.fileName),
+                    this._sourceRoots
                 );
                 if (sourceMap && sourceMap._loading) {
                     sourceMap._loading.then(() => {
                         const mappingResult: MappingResult = this._sourceMaps.MapToSource(
                             Path.resolve(this._outDir, e.fileName),
                             e.lineNumber,
-                            0
+                            0,
+                            this._sourceRoots
                         );
                         if (!mappingResult) {
                             sendEvent();
@@ -1973,7 +1975,18 @@ export class DukDebugSession extends DebugSession {
 
         let fpath: string;
         if (this._args.sourceMaps) {
-            fpath = this.normPath(Path.join(this._outDir, name));
+            let candidatePath = this.normPath(Path.join(this._outDir, name));
+            if (FS.existsSync(candidatePath)) {
+                fpath = this.normPath(Path.join(this._outDir, name));
+            } else {
+                for (let rpath of this._sourceRoots) {
+                    let candidatePath = this.normPath(Path.join(rpath, name));
+                    if (FS.existsSync(candidatePath)) {
+                        fpath = candidatePath;
+                        break;
+                    }
+                }
+            }
         } else {
             for (let rpath of this._sourceRoots) {
                 let candidatePath = this.normPath(Path.join(rpath, name));
@@ -2094,9 +2107,17 @@ export class DukDebugSession extends DebugSession {
                     continue;
                 }
                 for (const candidateFile of candidate.srcMap._sources) {
-                    if (candidateFile && this.normPath(Path.resolve(this._outDir, candidateFile)) === path) {
-                        this.dbgLog(`[scanDir] Found matching file: ${candidateFile}`);
-                        return candidate;
+                    if (candidateFile) {
+                        if (this.normPath(Path.resolve(this._outDir, candidateFile)) === path) {
+                            this.dbgLog(`[scanDir] Found matching file: ${candidate}`);
+                            return candidate;
+                        }
+                        for (let rpath of this._sourceRoots) {
+                            if (this.normPath(Path.join(rpath, candidateFile)) === path) {
+                                this.dbgLog(`[scanDir] Found matching file: ${candidate}`);
+                                return candidate;
+                            }
+                        }
                     }
                 }
             }
@@ -2122,7 +2143,7 @@ export class DukDebugSession extends DebugSession {
             return;
         }
 
-        src.srcMap = this._sourceMaps.MapPathFromSource(src.path);
+        src.srcMap = this._sourceMaps.MapPathFromSource(src.path, this._sourceRoots);
         src.srcMapPath = src.srcMap.generatedPath();
     }
 
