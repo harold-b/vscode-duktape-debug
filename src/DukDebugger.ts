@@ -1944,6 +1944,8 @@ export class DukDebugSession extends DebugSession {
 
     //-----------------------------------------------------------
     private mapSourceFile(name: string): SourceFile {
+        this.dbgLog(`[mapSourceFile] Mapping source file ${name}`);
+
         if (!name) {
             return null;
         }
@@ -1956,6 +1958,7 @@ export class DukDebugSession extends DebugSession {
         for (let k in sources) {
             let val: SourceFile = sources[k];
             if (val.name === name) {
+                this.dbgLog(`[mapSourceFile] Mapped source file ${val.path}`);
                 return val;
             }
         }
@@ -1973,7 +1976,13 @@ export class DukDebugSession extends DebugSession {
             }
         }
 
-        if (!fpath || !FS.existsSync(fpath)) {
+        if (!fpath) {
+            this.dbgLog(`[mapSourceFile] failed to map source file`);
+            return null;
+        }
+
+        if (!FS.existsSync(fpath)) {
+            this.dbgLog(`[mapSourceFile] mapped source path doesn't exist ${fpath}`);
             return null;
         }
 
@@ -1989,7 +1998,7 @@ export class DukDebugSession extends DebugSession {
         try {
             this.checkForSourceMap(src);
             if (src.srcMap) {
-                // Create a generated-to-oiriginal lookup
+                // Create a generated-to-original lookup
                 // entry for each file in the source map.
                 let srcMap = src.srcMap;
                 for (let i = 0; i < srcMap._sources.length; i++) {
@@ -2004,7 +2013,9 @@ export class DukDebugSession extends DebugSession {
                     this._sourceToGen[srcPath] = src;
                 }
             }
-        } catch (err) {}
+        } catch (err) {
+            this.dbgLog(`[mapSourceFile] Failed to process source map for source: ${src}`);
+        }
 
         return src;
     }
@@ -2017,6 +2028,7 @@ export class DukDebugSession extends DebugSession {
     // and attempts to find the file in them
     //-----------------------------------------------------------
     private unmapSourceFile(path: string): SourceFile {
+        this.dbgLog(`[unmapSourceFile] Unmapping file: ${path}`);
         path = Path.normalize(path);
         let name = Path.basename(path);
 
@@ -2024,6 +2036,7 @@ export class DukDebugSession extends DebugSession {
         // or just keep the full path if it's not
         let pathUnderRoot = Path.dirname(this.getSourceNameByPath(path) || "");
 
+        this.dbgLog(`[unmapSourceFile] Path under root: ${pathUnderRoot}`);
         if (!this._sourceMaps) {
             return this.mapSourceFile(Path.join(pathUnderRoot, name));
         }
@@ -2035,10 +2048,8 @@ export class DukDebugSession extends DebugSession {
             return src2gen[path];
         }
 
-        let src: SourceFile = null;
-
         // If we still haven't found anything,
-        // we try to mapa the source files in the outDir until
+        // we try to map the source files in the outDir until
         // we find the matching one.
         const scanDir = (dirPath: string, rootPath: string) => {
             // In case the directory doesn't exsist
@@ -2046,6 +2057,7 @@ export class DukDebugSession extends DebugSession {
             try {
                 files = FS.readdirSync(dirPath);
             } catch (err) {
+                this.dbgLog(`[scanDir] Error reading directory: ${dirPath}`);
                 return;
             }
 
@@ -2063,6 +2075,7 @@ export class DukDebugSession extends DebugSession {
 
                 const candidate = this.mapSourceFile(Path.join(rootPath, f));
                 if (candidate.name === Path.join(pathUnderRoot, name)) {
+                    this.dbgLog(`[scanDir] Found matching file: ${candidate.name}`);
                     return candidate;
                 }
                 if (!candidate.srcMap) {
@@ -2070,6 +2083,7 @@ export class DukDebugSession extends DebugSession {
                 }
                 for (const candidateFile of candidate.srcMap._sources) {
                     if (candidateFile && this.normPath(Path.resolve(this._outDir, candidateFile)) === path) {
+                        this.dbgLog(`[scanDir] Found matching file: ${candidateFile}`);
                         return candidate;
                     }
                 }
@@ -2106,7 +2120,9 @@ export class DukDebugSession extends DebugSession {
 
         for (let rpath of this._sourceRoots) {
             if (fpath.indexOf(rpath) === 0) {
-                return fpath.substr(rpath.length + 1);
+                const sourceName = fpath.substr(rpath.length + 1);
+                this.dbgLog(`[getSourceNameByPath] Path found in source root '${rpath}' source name: ${sourceName}`);
+                return sourceName;
             }
         }
 

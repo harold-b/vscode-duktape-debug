@@ -1,14 +1,15 @@
 {
     "name": "duk-debug",
     "displayName": "Duktape Debugger",
-    "version": "0.5.1",
+    "version": "0.5.2",
     "description": "Debug Adapter for Duktape runtimes.",
     "author": "Harold Brenes",
     "publisher": "HaroldBrenes",
     "license": "MIT (See LICENSE.txt)",
     "icon": "img/icon.png",
     "maintainers": [
-        "Harold Brenes <brenes.games@gmail.com> (http://hbrenes.com/cv)"
+        "Harold Brenes <brenes.games@gmail.com> (http://hbrenes.com/cv)",
+        "Andrew Chambers <andrewrchambers@gmail.com>"
     ],
     "categories": [
         "Debuggers"
@@ -65,8 +66,8 @@
         "tslint": "tslint ./src/**/*.ts",
         "postinstall": "node ./node_modules/vscode/bin/install",
         "vscode:prepublish": "webpack --mode production",
-        "compile": "webpack --mode none",
-        "watch": "webpack --mode none --watch",
+        "compile": "webpack --mode development",
+        "watch": "webpack --mode development --watch",
         "format": "prettier --write \"**/*.{ts,tsx,js}\"",
         "check-format": "prettier --list-different \"**/*.{ts,tsx,js}\""
     },

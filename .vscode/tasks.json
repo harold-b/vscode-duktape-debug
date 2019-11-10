@@ -13,7 +13,14 @@
                 "clear": false
             },
             "problemMatcher": [
-                "$ts-webpack"
+                {
+                    "base": "$ts-webpack",
+                    "background": {
+                        "activeOnStart": true,
+                        "beginsPattern": "webpack is watching the files",
+                        "endsPattern": "Built at"
+                    },
+                }
             ],
             "isBackground": true
         },
