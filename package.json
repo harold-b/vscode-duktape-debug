@@ -1,7 +1,7 @@
 {
     "name": "duk-debug",
     "displayName": "Duktape Debugger",
-    "version": "0.5.2",
+    "version": "0.5.3",
     "description": "Debug Adapter for Duktape runtimes.",
     "author": "Harold Brenes",
     "publisher": "HaroldBrenes",
@@ -153,6 +153,11 @@
                                     "type": "string"
                                 },
                                 "description": "The local source root paths that correspond to the remote root paths.",
+                                "default": null
+                            },
+                            "dukRemoteRoot": {
+                                "type": "string",
+                                "description": "Optional prefix for filenames in the remote environment.",
                                 "default": null
                             },
                             "debugLog": {

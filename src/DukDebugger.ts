@@ -113,6 +113,9 @@ export interface AttachRequestArguments extends DebugProtocol.AttachRequestArgum
     localRoot?: string;
     /** VS Code's root directories. */
     localRoots?: string[];
+
+    /** Duktape root directory */
+    dukRemoteRoot?: string;
 }
 
 // Utitity
@@ -391,6 +394,7 @@ export class DukDebugSession extends DebugSession {
     private _targetProgram: string;
     private _sourceRoots: string[];
     private _outDir: string;
+    private _remoteRoot: string;
     private _stopOnEntry: boolean;
     private _dukProto: DukDbgProtocol;
 
@@ -655,6 +659,10 @@ export class DukDebugSession extends DebugSession {
                     return this.normPath(path);
                 })
             );
+        }
+
+        if (args.dukRemoteRoot) {
+            this._remoteRoot = args.dukRemoteRoot;
         }
 
         this._outDir = this.normPath(args.outDir);
@@ -1988,7 +1996,11 @@ export class DukDebugSession extends DebugSession {
 
         let src: SourceFile = new SourceFile();
         src.id = this._nextSourceID++;
-        src.name = name;
+        if (this._remoteRoot) {
+            src.name = Path.join(this._remoteRoot, name);
+        } else {
+            src.name = name;
+        }
         src.path = fpath;
 
         sources[src.id] = src;
