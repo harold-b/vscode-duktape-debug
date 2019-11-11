@@ -22,7 +22,6 @@ A [Duktape](https://github.com/svaarala/duktape) debug client for Visual Studio 
 ## Status
 It works. I'd like to refactor the code and polish it more as I find the time.
 
-
 ## Usage
 Create a new launch.json configuration file and configure the address and port to your debug server's listening address and port.
 
@@ -96,6 +95,10 @@ You must also have a transport layer written in your Duktape host application to
 For an example of an application with debugger support, please see [Duktape's command line app](https://github.com/svaarala/duktape/tree/master/examples/cmdline).
 
 
+## Contributing
+
+To run and debug this extension locally, clone this repository load the folder in VSCode and then run the ``Launch Duktape Debugger Extension`` task. This will open a new window with the debugger enabled.
+
 ## References
  - [https://code.visualstudio.com/docs/extensions/overview](https://code.visualstudio.com/docs/extensions/overview)
  - [https://code.visualstudio.com/docs/extensions/example-debuggers](https://code.visualstudio.com/docs/extensions/example-debuggers)
@@ -108,7 +111,7 @@ Special thanks to Sami Vaarala for developing Duktape, and for freely sharing it
 A "thank you" also to the VSCode team for facilitating their open-source IDE and the ability to easily make extensions for it.
 And finally, to those who has contributed to this project via bug reports or pull requests, thank you.
 
-This code contains portions borrowed or adapted from the [vscode nodeJS debugger](https://github.com/Microsoft/vscode-node-debug) and Sami Vaarala's web-based nodeJS [reference implementation](https://github.com/svaarala/duktape/tree/master/debugger) of a Dukatape debug client.
+This code contains portions borrowed or adapted from the [vscode nodeJS debugger](https://github.com/Microsoft/vscode-node-debug) and Sami Vaarala's web-based nodeJS [reference implementation](https://github.com/svaarala/duktape/tree/master/debugger) of a Duktape debug client.
 
 
 ## License

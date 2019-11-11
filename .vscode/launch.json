@@ -1,46 +1,6 @@
 {
 	"version": "0.2.0",
 	"configurations": [
-
-		// Debugging the debugger instructions:
-		// Launch "Server + Extension" debug configuration.
-		// From the launched extension, configure your duk script to launch
-		// in "debugServer" mode.
-		// This can be done by specifying the following "duk" launch.json
-		// configuration values:
-
-		// {
-		//     ...
-		//     "type"        : "duk",
-		//	   // The localhost host listening port.
-		//     // This must correspond with the launch.json value in
-		//     // Duktape Debug Server.
-		//     "debugServer" : 4711,
-		//     // Optional, verbose wire protocol logging to the debug log
-		//     "debugLog"    : true,
-		//     ...
-		// }
-
-		// The debugServer mode allows observation and debugging of all traffic
-		// between the extension and the remote debug  target with the
-		// Duktape Debug Server server acting a man-in-the-middle.
-        {
-
-			"name"        : "Launch Duktape Debug Server",
-			"type"        : "node",
-			"request"     : "launch",
-			"runtimeArgs" : [ "--nolazy" ],
-			"program"     : "${workspaceRoot}/src/debugAdapter.ts",
-			"stopOnEntry" : false,
-			// The localhost host listening port.
-		    // This must correspond with the launch.json value in
-		    // the "duk" launch.json file.
-			"args"        : [ "--server=4711" ],
-			"sourceMaps"  : true,
-			"cwd"         : "${workspaceRoot}",
-			"preLaunchTask": "npm: watch"
-		},
-
 		{
 			"name"              : "Launch Duktape Debugger Extension",
 			"type"              : "extensionHost",
@@ -48,22 +8,10 @@
 			"runtimeExecutable" : "${execPath}",
 			"stopOnEntry"       : false,
 			"sourceMaps"        : true,
-
 			"args": [
 				"--extensionDevelopmentPath=${workspaceRoot}"
 			],
 			"preLaunchTask": "npm: watch"
-		},
-	],
-
-	// Use this to launch the server and extension together for debugging.
-	"compounds": [
-		{
-			"name": "Server + Extension",
-			"configurations": [
-				"Launch Duktape Debug Server",
-				"Launch Duktape Debugger Extension"
-			]
 		}
 	]
 }
