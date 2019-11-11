@@ -1581,7 +1581,7 @@ export class DukDbgProtocol extends EE.EventEmitter {
             // can definitely fit the data
             let newLength = 2 * this._inBuf.length + available;
             const largerBuffer = Buffer.alloc(newLength);
-            this._inBuf.copy(largerBuffer);
+            largerBuffer.set(this._inBuf);
             this._inBuf = largerBuffer;
         }
 
