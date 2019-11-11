@@ -7,13 +7,12 @@ import * as Net from "net";
  * debug adapter should run inside the extension host.
  * Please note: the test suite does no longer work in this mode.
  */
-const EMBED_DEBUG_ADAPTER = false;
 const EXTENSION_DEBUG_TYPE = "duk";
 
 export function activate(context: vscode.ExtensionContext) {
     console.log("Duk Debugger Extension Activated");
 
-    if (EMBED_DEBUG_ADAPTER) {
+    if (process.env.NODE_ENV === "development") {
         const factory = new DukDebugAdapterDescriptorFactory();
         context.subscriptions.push(vscode.debug.registerDebugAdapterDescriptorFactory(EXTENSION_DEBUG_TYPE, factory));
         context.subscriptions.push(factory);
