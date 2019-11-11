@@ -663,13 +663,19 @@ export class DukDebugSession extends DebugSession {
         }
 
         if (args.dukRemoteRoot) {
-            this._remoteRoot = args.dukRemoteRoot;
+            this._remoteRoot = this.processDukRemoteRoot(args.dukRemoteRoot);
         }
 
         this._outDir = this.normPath(args.outDir);
         this._dbgLog = args.debugLog || false;
 
         this.beginInit(response);
+    }
+
+    private processDukRemoteRoot(remoteRoot: string): string {
+        const sep = Path.sep;
+        // Always append the path separator to the remoteRoot
+        return remoteRoot.endsWith(sep) ? remoteRoot : remoteRoot + sep;
     }
 
     //-----------------------------------------------------------
@@ -1958,6 +1964,12 @@ export class DukDebugSession extends DebugSession {
             return null;
         }
 
+        if (this._remoteRoot) {
+            name = name.replace(new RegExp(`^${this._remoteRoot}`), '');
+        }
+
+        this.dbgLog(`[mapSourceFile] trimmed remote root ${name}`);
+
         name = this.normPath(name);
 
         let sources = this._sources;
@@ -2007,11 +2019,7 @@ export class DukDebugSession extends DebugSession {
 
         let src: SourceFile = new SourceFile();
         src.id = this._nextSourceID++;
-        if (this._remoteRoot) {
-            src.name = Path.join(this._remoteRoot, name);
-        } else {
-            src.name = name;
-        }
+        src.name = name;
         src.path = fpath;
 
         sources[src.id] = src;
