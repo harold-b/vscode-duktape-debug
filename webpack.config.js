@@ -3,6 +3,7 @@
 "use strict";
 
 const path = require("path");
+const CopyPlugin = require('copy-webpack-plugin');
 
 const config = {
     target: "node",
@@ -30,8 +31,18 @@ const config = {
                 ]
             }
         ]
+    },
+    plugins: [
+        new CopyPlugin([{
+            from: path.resolve('node_modules/source-map/lib/mappings.wasm')
+        }])
+    ],
+    node: {
+        __dirname: false
     }
 };
+
+
 
 module.exports = (env, argv) => {
     if (argv.mode === "development") {
