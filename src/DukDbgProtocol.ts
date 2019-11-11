@@ -679,13 +679,6 @@ export enum DukEvent {
     nfy_appmsg
 }
 
-enum State {
-    Offline = 0,
-    Connecting,
-    Verification,
-    Online
-}
-
 export class DukDbgProtocol extends EE.EventEmitter {
     private static OUT_BUF_SIZE: number = 1024 * 1; // Resizable
     private static IN_BUF_SIZE: number = 1024 * 1024; // Fixed

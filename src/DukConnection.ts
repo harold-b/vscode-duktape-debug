@@ -1,6 +1,5 @@
 import * as Net from "net";
 import * as EE from "events";
-import * as assert from "assert";
 
 enum State {
     Offline = 0,

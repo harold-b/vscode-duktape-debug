@@ -16,7 +16,6 @@ import {
 
 import { DebugProtocol } from "vscode-debugprotocol";
 
-import * as Net from "net";
 import * as Path from "path";
 import * as FS from "fs";
 import * as assert from "assert";
@@ -1137,7 +1136,6 @@ export class DukDebugSession extends DebugSession {
         }
 
         const scope = properties.scope;
-        const stackFrame = scope.stackFrame;
 
         const returnVars = (vars: Variable[]) => {
             // Sort vars and return them.

@@ -5,7 +5,6 @@
 
 import * as Path from "path";
 import * as FS from "fs";
-import * as URL from "url";
 import { SourceMapConsumer, MappedPosition, Position, BasicSourceMapConsumer } from "source-map";
 import * as PathUtils from "./pathUtilities";
 
