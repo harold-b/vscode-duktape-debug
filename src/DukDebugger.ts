@@ -842,6 +842,10 @@ export class DukDebugSession extends DebugSession {
                     return doAddBreakpoints(i + 1);
                 }
 
+                if (this._remoteRoot) {
+                    generatedName = Path.join(this._remoteRoot, generatedName);
+                }
+
                 return this._dukProto
                     .requestSetBreakpoint(generatedName, line)
                     .then((r: DukAddBreakResponse) => {
@@ -1965,7 +1969,7 @@ export class DukDebugSession extends DebugSession {
         }
 
         if (this._remoteRoot) {
-            name = name.replace(new RegExp(`^${this._remoteRoot}`), '');
+            name = name.replace(new RegExp(`^${this._remoteRoot}`), "");
         }
 
         this.dbgLog(`[mapSourceFile] trimmed remote root ${name}`);
