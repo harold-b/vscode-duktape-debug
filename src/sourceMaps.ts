@@ -449,8 +449,15 @@ export class SourceMap {
      * Any url schemes are removed.
      */
     private absolutePath(path: string): string {
+        const prefix = "file://";
         if (!util.isAbsolute(path)) {
             let candidatePath = util.join(this._sourcemapLocation, path);
+            if (candidatePath.indexOf(prefix) === 0) {
+                candidatePath = candidatePath.substr(prefix.length);
+                if (/^\/[a-zA-Z]\:\//.test(candidatePath)) {
+                    candidatePath = candidatePath.substr(1);
+                }
+            }
             if (FS.existsSync(candidatePath)) {
                 path = candidatePath;
             } else {
@@ -463,12 +470,16 @@ export class SourceMap {
                 }
             }
         }
-        const prefix = "file://";
         if (path.indexOf(prefix) === 0) {
             path = path.substr(prefix.length);
             if (/^\/[a-zA-Z]\:\//.test(path)) {
                 path = path.substr(1);
             }
+        }
+        // on Windows change forward slashes back to back slashes
+        if (process.platform === "win32") {
+            // path = path.replace(/\//g, "\\");
+            path = path.replace(/\\/g, "/");
         }
         return path;
     }
@@ -498,11 +509,6 @@ export class SourceMap {
 
             // map result back to absolute path
             mp.source = this.absolutePath(mp.source);
-
-            // on Windows change forward slashes back to back slashes
-            if (process.platform === "win32") {
-                mp.source = mp.source.replace(/\//g, "\\");
-            }
         }
 
         return mp;

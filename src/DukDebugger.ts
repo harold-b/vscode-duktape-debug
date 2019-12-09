@@ -528,6 +528,9 @@ export class DukDebugSession extends DebugSession {
                 this.logToClient(`Protocol ID: ${version.id}\n`);
 
                 if (version.major === 2 || (version.major === 1 && version.minor >= 5)) {
+                    if (this._args.sourceMaps) {
+                        this._sourceMaps = new SourceMaps(this._outDir);
+                    }
                     this.initDukDbgProtocol(conn, buf);
                     this.finalizeInit(response);
                 } else {
@@ -549,10 +552,6 @@ export class DukDebugSession extends DebugSession {
     //-----------------------------------------------------------
     private finalizeInit(response: DebugProtocol.Response): void {
         this.dbgLog("Finalized Initialization.");
-
-        if (this._args.sourceMaps) {
-            this._sourceMaps = new SourceMaps(this._outDir);
-        }
 
         // Make sure that any breakpoints that were left set in
         // case of a broken connection are cleared
@@ -2065,7 +2064,7 @@ export class DukDebugSession extends DebugSession {
     private unmapSourceFile(path: string): SourceFile {
         this.dbgLog(`[unmapSourceFile] Unmapping file: ${path}`);
         path = Path.normalize(path);
-        let name = Path.basename(path);
+        let name = this.normPath(Path.basename(path));
 
         // Grab the relative path under the source root if this is located there,
         // or just keep the full path if it's not
