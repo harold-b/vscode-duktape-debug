@@ -470,6 +470,11 @@ export class SourceMap {
                 path = path.substr(1);
             }
         }
+        // on Windows change forward slashes back to back slashes
+        if (process.platform === "win32") {
+            // path = path.replace(/\//g, "\\");
+            path = path.replace(/\\/g, "/");
+        }
         return path;
     }
 
@@ -498,11 +503,6 @@ export class SourceMap {
 
             // map result back to absolute path
             mp.source = this.absolutePath(mp.source);
-
-            // on Windows change forward slashes back to back slashes
-            if (process.platform === "win32") {
-                mp.source = mp.source.replace(/\//g, "\\");
-            }
         }
 
         return mp;
