@@ -449,8 +449,15 @@ export class SourceMap {
      * Any url schemes are removed.
      */
     private absolutePath(path: string): string {
+        const prefix = "file://";
         if (!util.isAbsolute(path)) {
             let candidatePath = util.join(this._sourcemapLocation, path);
+            if (candidatePath.indexOf(prefix) === 0) {
+                candidatePath = candidatePath.substr(prefix.length);
+                if (/^\/[a-zA-Z]\:\//.test(candidatePath)) {
+                    candidatePath = candidatePath.substr(1);
+                }
+            }
             if (FS.existsSync(candidatePath)) {
                 path = candidatePath;
             } else {
@@ -463,7 +470,6 @@ export class SourceMap {
                 }
             }
         }
-        const prefix = "file://";
         if (path.indexOf(prefix) === 0) {
             path = path.substr(prefix.length);
             if (/^\/[a-zA-Z]\:\//.test(path)) {
