@@ -2163,7 +2163,7 @@ export class DukDebugSession extends DebugSession {
 
         for (let rpath of this._sourceRoots) {
             if (fpath.indexOf(rpath) === 0) {
-                const sourceName = fpath.substr(rpath.length + 1);
+                const sourceName = fpath.substr(rpath.length);
                 this.dbgLog(`[getSourceNameByPath] Path found in source root '${rpath}' source name: ${sourceName}`);
                 return sourceName;
             }
